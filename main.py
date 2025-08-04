@@ -17,20 +17,19 @@ def generate_image_url():
     return "https://picsum.photos/512"  # use real AI API later
 
 # --- Post to Twitter
-def post_to_twitter(text, image_url):
-    img_data = requests.get(image_url).content
-    with open("temp.jpg", "wb") as handler:
-        handler.write(img_data)
+def post_to_twitter(text, image=None):
+    print("Posting to Twitter...")
 
     auth = tweepy.OAuth1UserHandler(
-        os.environ["TWITTER_API_KEY"],
-        os.environ["TWITTER_API_SECRET"],
-        os.environ["TWITTER_ACCESS_TOKEN"],
-        os.environ["TWITTER_ACCESS_SECRET"]
+        os.environ['TWITTER_API_KEY'],
+        os.environ['TWITTER_API_SECRET'],
+        os.environ['TWITTER_ACCESS_TOKEN'],
+        os.environ['TWITTER_ACCESS_SECRET']
     )
     api = tweepy.API(auth)
-    media = api.media_upload("temp.jpg")
-    api.update_status(status=text, media_ids=[media.media_id])
+
+    # ✅ POST TEXT ONLY (no media)
+    api.update_status(status=text)
 
 # --- MAIN
 if __name__ == "__main__":
