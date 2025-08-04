@@ -1,21 +1,25 @@
-name: Daily AI Poster
+name: Daily Social Poster
 
 on:
   schedule:
-    - cron: '0 9 * * *'  # runs every day at 9 AM UTC
-  workflow_dispatch:     # lets you run it manually too
+    - cron: '0 9 * * *'  # Every day at 9:00 UTC
+  workflow_dispatch:     # Manual run
 
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Run AI Social Agent
-        run: |
-          if grep -q "ON" status.txt; then
-            python3 main.py
-          else
-            echo "Agent is OFF"
-          fi
-
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install Dependencies
+        run: pip install tweepy requests
+      - name: Run Bot
+        run: python3 main.py
+        env:
+          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+          TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
+          TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_SECRET: ${{ secrets.TWITTER_ACCESS_SECRET }}
