@@ -2,8 +2,8 @@ name: Daily Social Poster
 
 on:
   schedule:
-     - cron: '51 16 * * *'  # 10:21 PM IST = 4:51 PM UTC
-  workflow_dispatch:     # Manual run
+    - cron: '1 17 * * *'  # 10:31 PM IST = 5:01 PM UTC
+  workflow_dispatch:
 
 jobs:
   run:
