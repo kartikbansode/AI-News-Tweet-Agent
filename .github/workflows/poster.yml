@@ -1,1 +1,21 @@
+name: Daily AI Poster
+
+on:
+  schedule:
+    - cron: '0 9 * * *'  # runs every day at 9 AM UTC
+  workflow_dispatch:     # lets you run it manually too
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run AI Social Agent
+        run: |
+          if grep -q "ON" status.txt; then
+            python3 main.py
+          else
+            echo "Agent is OFF"
+          fi
 
