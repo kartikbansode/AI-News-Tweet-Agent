@@ -1,44 +1,42 @@
+import os
 import json
 import random
 import requests
 import tweepy
 
-# Load config
-with open('config.json') as f:
+# Load prompt configs
+with open("config.json") as f:
     config = json.load(f)
 
-# ---- 1. Generate content using Hugging Face (text + image) ---- #
+# --- Generate Content (you can upgrade this with real AI later)
 def generate_caption():
-    prompts = ["inspirational quote", "fun fact", "daily tip"]
-    prompt = random.choice(prompts)
-    return f"Here's your {prompt} of the day! 🌟"
+    prompts = config["prompts"]
+    return random.choice(prompts)
 
-def generate_image():
-    return "https://picsum.photos/512"  # Replace with real AI image generator later
+def generate_image_url():
+    return "https://picsum.photos/512"  # use real AI API later
 
-caption = generate_caption()
-image_url = generate_image()
+# --- Post to Twitter
+def post_to_twitter(text, image_url):
+    img_data = requests.get(image_url).content
+    with open("temp.jpg", "wb") as handler:
+        handler.write(img_data)
 
-# ---- 2. Post to Twitter ---- #
-def post_to_twitter(caption, image_url):
     auth = tweepy.OAuth1UserHandler(
-        config["twitter"]["api_key"],
-        config["twitter"]["api_secret"],
-        config["twitter"]["access_token"],
-        config["twitter"]["access_secret"]
+        os.environ["TWITTER_API_KEY"],
+        os.environ["TWITTER_API_SECRET"],
+        os.environ["TWITTER_ACCESS_TOKEN"],
+        os.environ["TWITTER_ACCESS_SECRET"]
     )
     api = tweepy.API(auth)
-    img_data = requests.get(image_url).content
-    with open("temp.jpg", "wb") as f:
-        f.write(img_data)
     media = api.media_upload("temp.jpg")
-    api.update_status(status=caption, media_ids=[media.media_id])
+    api.update_status(status=text, media_ids=[media.media_id])
 
-# ---- 3. Post to Instagram (requires setup) ---- #
-def post_to_instagram(caption, image_url):
-    print("Instagram posting is complex; see instructions below")
-
-# Post
-post_to_twitter(caption, image_url)
-post_to_instagram(caption, image_url)
-
+# --- MAIN
+if __name__ == "__main__":
+    if open("status.txt").read().strip() == "ON":
+        caption = generate_caption()
+        image = generate_image_url()
+        post_to_twitter(caption, image)
+    else:
+        print("Bot is OFF")
