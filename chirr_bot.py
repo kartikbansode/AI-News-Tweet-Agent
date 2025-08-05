@@ -1,39 +1,50 @@
+import os
 import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
-def post_to_twitter_via_chirr(tweet):
+def post_to_chirr(tweet_text):
+    print("🔁 Launching headless browser...")
+
+    # Set up headless Chrome
     options = Options()
-    options.add_argument("--headless")
+    options.add_argument("--headless=new")
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
+    options.add_argument("--window-size=1920,1080")
 
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
+    # Launch Chrome
+    driver = webdriver.Chrome(executable_path=ChromeDriverManager().install(), options=options)
 
     try:
         print("🔁 Opening Chirr App...")
-        driver.get("https://chirr.app/editor")
+        driver.get("https://getchirrapp.com")
+        time.sleep(4)
 
-        # Wait for textarea to load
-        wait = WebDriverWait(driver, 20)
-        textarea = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "textarea[placeholder='Start typing your thread...']")))
-
-        print("✍️ Typing tweet...")
-        textarea.send_keys(tweet)
-        time.sleep(2)
-
-        print("✅ Click 'Tweet All'")
-        tweet_all = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(),'Tweet all')]")))
-        tweet_all.click()
+        # Enter email
+        email_input = driver.find_element(By.CSS_SELECTOR, 'input[type="email"]')
+        email_input.send_keys(os.environ["CHIRR_EMAIL"])
+        driver.find_element(By.XPATH, "//button[contains(., 'Continue')]").click()
         time.sleep(3)
 
-        print("✅ Tweet sent successfully via Chirr!")
+        # 🚨 OTP WARNING
+        print("⚠️ OTP sent to email. This login step cannot be automated unless cookies are reused.")
+        print("❌ Tweet not posted. You must log in manually once to save session cookies if you want full automation.")
+        return
+
+        # 🔒 --- BELOW CODE ONLY WORKS AFTER LOGIN / COOKIE STORAGE SETUP ---
+        # If logged in, locate the textarea
+        textarea = driver.find_element(By.CSS_SELECTOR, "textarea")
+        print("✍️ Typing tweet...")
+        textarea.send_keys(tweet_text)
+
+        time.sleep(2)
+        post_button = driver.find_element(By.XPATH, "//button[contains(., 'Post')]")
+        post_button.click()
+
+        print("✅ Tweet posted successfully on Chirr!")
 
     except Exception as e:
         print("❌ Failed to post tweet:", e)
