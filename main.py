@@ -12,7 +12,7 @@ def generate_post():
     }
 
     data = {
-        "model": "command",
+        "model": "command-r+",
         "prompt": "Write a fresh, concise, and insightful social media post about today's global news or trending topic.",
         "max_tokens": 300,
         "temperature": 0.9,
