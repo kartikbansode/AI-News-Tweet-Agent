@@ -1,26 +1,26 @@
-name: Run every hour
+name: Run AI Agent Hourly
 
 on:
   schedule:
-    - cron: '0 * * * *'  # every hour
-  workflow_dispatch:
+    - cron: '0 * * * *'  # Every hour (UTC)
+  workflow_dispatch:     # Manual run
 
 jobs:
-  build:
+  run:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run bot
+      - name: Run main.py
         env:
           COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
         run: python main.py
