@@ -1,50 +1,56 @@
 import os
 import requests
+import json
+from datetime import datetime
+
+# Load Gemini API key from environment
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+# Use Gemini Pro model
+GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
+
+# Prompt
+PROMPT = "Write a short, tweet-sized post (under 280 characters) about the latest global ideas or innovations."
 
 def generate_post():
     print("Generating post with Gemini...")
-    
-    api_key = os.getenv("GEMINI_API_KEY")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}"
 
-    headers = {
-        "Content-Type": "application/json"
-    }
-
+    headers = {"Content-Type": "application/json"}
     data = {
         "contents": [
             {
-                "parts": [
-                    {
-                        "text": "Write a short tweet (max 280 characters) summarizing today's biggest global idea news. Be engaging."
-                    }
-                ]
+                "parts": [{"text": PROMPT}]
             }
         ]
     }
 
-    response = requests.post(url, headers=headers, json=data)
-    print("Gemini response:", response.json())
+    response = requests.post(GEMINI_URL, headers=headers, data=json.dumps(data))
+    res_json = response.json()
+
+    print("Gemini response:", res_json)
 
     try:
-        return response.json()['candidates'][0]['content']['parts'][0]['text']
-    except KeyError:
+        text = res_json["candidates"][0]["content"]["parts"][0]["text"]
+        return text.strip()
+    except:
         print("❌ Gemini failed to return valid response.")
         return None
 
+def save_to_typefully(text):
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    filename = f"typefully_post_{now}.txt"
 
-def send_to_typefully(tweet_text):
-    print("Sending tweet to Typefully...")
+    with open(filename, "w") as f:
+        f.write(text)
 
-    # Replace with your actual Typefully Draft URL or webhook if available
-    # This is a placeholder — you may need a paid Typefully account or use a browser automation workaround.
-    print("Generated tweet:\n", tweet_text)
-    print("✅ Manually copy and paste this into Typefully.com (or automate via Puppeteer or Selenium later).")
-
+    print(f"✅ Saved tweet as: {filename}")
 
 if __name__ == "__main__":
     tweet = generate_post()
+
     if tweet:
-        send_to_typefully(tweet)
+        print("Generated Tweet:")
+        print(tweet)
+        save_to_typefully(tweet)
     else:
         print("❌ No tweet was generated.")
