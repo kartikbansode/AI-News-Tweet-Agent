@@ -1,50 +1,34 @@
+import cohere
 import os
-import requests
-import urllib.parse
-import webbrowser
+from typefully_bot import post_to_typefully
 
 def generate_post():
     print("Generating post with Cohere...")
 
-    COHERE_API_KEY = os.getenv("COHERE_API_KEY")
-    headers = {
-        "Authorization": f"Bearer {COHERE_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    data = {
-        "message": "Write a fresh, concise, and insightful social media post about today's global news or trending topic.",
-        "chat_history": [],
-        "temperature": 0.7,
-        "preamble": "",
-        "model": "command-r-plus",
-        "max_tokens": 300
-    }
-
-    response = requests.post("https://api.cohere.ai/v1/chat", headers=headers, json=data)
-
-    try:
-        response_json = response.json()
-        print("Cohere response:", response_json)
-        return response_json.get("text", "").strip()
-    except Exception as e:
-        print("❌ Error decoding response:", e)
+    api_key = os.getenv("COHERE_API_KEY")
+    if not api_key:
+        print("❌ Error: COHERE_API_KEY not found in environment variables.")
         return None
 
-def open_typefully(tweet_text):
-    if not tweet_text:
-        print("❌ No tweet to submit.")
-        return
+    co = cohere.Client(api_key)
 
-    encoded = urllib.parse.quote(tweet_text)
-    url = f"https://typefully.com/new?text={encoded}"
-    print("Submitting post to Typefully (open in browser)...")
-    print(f"✅ Open this link to post: {url}")
     try:
-        webbrowser.open(url)
-    except:
-        pass
+        response = co.chat(
+            message="Write a fresh, concise, and insightful social media post about today's global news or trending topic.",
+        )
+        if hasattr(response, 'text'):
+            print("✅ Post generated successfully.")
+            return response.text.strip()
+        else:
+            print(f"❌ Unexpected Cohere response: {response}")
+            return None
+    except Exception as e:
+        print(f"❌ Error from Cohere: {e}")
+        return None
 
 if __name__ == "__main__":
     tweet = generate_post()
-    open_typefully(tweet)
+    if tweet:
+        post_to_typefully(tweet)
+    else:
+        print("❌ No tweet generated.")
