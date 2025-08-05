@@ -1,41 +1,23 @@
+import openai
+from datetime import datetime
+
+# Load OpenAI key from GitHub Secrets
 import os
-import json
-import random
-import requests
-import tweepy
+openai.api_key = os.environ["OPENAI_API_KEY"]
 
-# Load prompt configs
-with open("config.json") as f:
-    config = json.load(f)
-
-# --- Generate Content (you can upgrade this with real AI later)
-def generate_caption():
-    prompts = config["prompts"]
-    return random.choice(prompts)
-
-def generate_image_url():
-    return "https://picsum.photos/512"  # use real AI API later
-
-# --- Post to Twitter
-def post_to_twitter(text, image=None):
-    print("Posting to Twitter...")
-
-    auth = tweepy.OAuth1UserHandler(
-        os.environ['TWITTER_API_KEY'],
-        os.environ['TWITTER_API_SECRET'],
-        os.environ['TWITTER_ACCESS_TOKEN'],
-        os.environ['TWITTER_ACCESS_SECRET']
+def generate_tweet():
+    today = datetime.now().strftime("%A, %d %B %Y")
+    prompt = f"Write a short motivational tweet for {today}. Max 280 characters."
+    response = openai.ChatCompletion.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}]
     )
-    api = tweepy.API(auth)
+    return response.choices[0].message.content.strip()
 
-    # ✅ POST TEXT ONLY (no media)
-    api.update_status(status=text)
+def save_to_file(text):
+    with open("tweet.txt", "w") as f:
+        f.write(text)
 
-# --- MAIN
-if __name__ == "__main__":
-    if open("status.txt").read().strip() == "ON":
-        caption = generate_caption()
-        image = generate_image_url()
-        post_to_twitter(caption, image)
-    else:
-        print("Bot is OFF")
+tweet = generate_tweet()
+save_to_file(tweet)
+print(f"Tweet generated:\n{tweet}")
