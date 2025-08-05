@@ -1,26 +1,29 @@
-name: Post to Twitter via Typefully
+name: Auto Tweet Every Hour
 
 on:
   schedule:
-    - cron: "0 * * * *"  # Every hour
-  workflow_dispatch:  # Manual run support
+    - cron: '0 * * * *'  # every hour
+  workflow_dispatch:
 
 jobs:
-  build:
+  tweet:
     runs-on: ubuntu-latest
 
-    env:
-      COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
-      TYPEFULLY_EMAIL: ${{ secrets.TYPEFULLY_EMAIL }}
-      TYPEFULLY_PASSWORD: ${{ secrets.TYPEFULLY_PASSWORD }}
-
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+
       - name: Install dependencies
         run: pip install -r requirements.txt
+
       - name: Run bot
         run: python main.py
+        env:
+          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+          TYPEFULLY_EMAIL: ${{ secrets.TYPEFULLY_EMAIL }}
+          TYPEFULLY_PASSWORD: ${{ secrets.TYPEFULLY_PASSWORD }}
