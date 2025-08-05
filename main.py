@@ -1,5 +1,6 @@
 from cohere_bot import generate_post
-from typefully_bot import post_to_typefully
+from chirr_bot import post_to_twitter_via_chirr
+
 
 print("Generating post with Cohere...")
 tweet = generate_post()
@@ -7,6 +8,7 @@ tweet = generate_post()
 if tweet:
     print("✅ Post generated successfully.")
     print("🔁 Launching headless browser...")
-    post_to_typefully(tweet.strip())
+    post_to_twitter_via_chirr(tweet.strip())
+
 else:
     print("❌ No tweet was generated.")
