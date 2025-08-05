@@ -2,8 +2,10 @@ import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 
 def post_to_twitter_via_chirr(tweet):
     options = Options()
@@ -17,15 +19,17 @@ def post_to_twitter_via_chirr(tweet):
     try:
         print("🔁 Opening Chirr App...")
         driver.get("https://chirr.app/editor")
-        time.sleep(5)
+
+        # Wait for textarea to load
+        wait = WebDriverWait(driver, 20)
+        textarea = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "textarea[placeholder='Start typing your thread...']")))
 
         print("✍️ Typing tweet...")
-        textarea = driver.find_element(By.CSS_SELECTOR, "textarea")
         textarea.send_keys(tweet)
         time.sleep(2)
 
         print("✅ Click 'Tweet All'")
-        tweet_all = driver.find_element(By.XPATH, "//button[contains(text(),'Tweet all')]")
+        tweet_all = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(),'Tweet all')]")))
         tweet_all.click()
         time.sleep(3)
 
