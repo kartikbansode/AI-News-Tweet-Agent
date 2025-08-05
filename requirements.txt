@@ -1,3 +1,3 @@
-requests
+cohere
 selenium
 webdriver-manager
