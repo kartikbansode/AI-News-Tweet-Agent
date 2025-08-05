@@ -22,9 +22,9 @@ def generate_post():
     result = response.json()
     print("Cohere response:", result)
 
-    if "text" in result:
-        return result["text"]
-    else:
+    try:
+        return result["generations"][0]["text"]
+    except Exception as e:
         print("❌ Cohere failed to return valid response.")
         return None
 
