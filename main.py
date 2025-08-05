@@ -1,47 +1,44 @@
 import os
 import requests
-
-# Load API key from environment variable
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+import json
 
 def generate_post():
-    print("Generating post with Gemini...")
-
-    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
-
+    print("Generating post with Cohere...")
+    api_key = os.getenv("COHERE_API_KEY")
     headers = {
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
 
     data = {
-        "contents": [
-            {
-                "parts": [
-                    {
-                        "text": "Write a short, engaging Twitter post about a recent global innovation or idea."
-                    }
-                ]
-            }
-        ]
+        "model": "command-r",
+        "prompt": "Write a short, fresh, and insightful social media post about today's global news idea.",
+        "max_tokens": 100,
+        "temperature": 0.7
     }
 
-    response = requests.post(endpoint, headers=headers, json=data)
-    res_json = response.json()
-    print("Gemini response:", res_json)
+    response = requests.post(
+        "https://api.cohere.ai/v1/generate",
+        headers=headers,
+        data=json.dumps(data)
+    )
 
-    if "candidates" in res_json:
-        return res_json["candidates"][0]["content"]["parts"][0]["text"]
-    else:
-        print("❌ Gemini failed to return valid response.")
+    try:
+        response_data = response.json()
+        print("Cohere response:", response_data)
+        return response_data['generations'][0]['text'].strip()
+    except Exception as e:
+        print("❌ Cohere failed to return valid response.")
         return None
 
-def main():
-    tweet = generate_post()
-    if tweet:
-        print("✅ Generated Tweet:")
-        print(tweet)
+def submit_to_typefully(text):
+    print("Submitting post to Typefully (open in browser)...")
+    if text:
+        url = f"https://typefully.com/new?text={requests.utils.quote(text)}"
+        print(f"✅ Open this link to post: {url}")
     else:
-        print("❌ No tweet was generated.")
+        print("❌ No post to submit.")
 
 if __name__ == "__main__":
-    main()
+    post = generate_post()
+    submit_to_typefully(post)
