@@ -19,7 +19,7 @@ def generate_post():
     return response.json()['choices'][0]['message']['content']
 
 def post_to_typefully(text):
-    zapier_webhook = "https://hooks.zapier.com/hooks/catch/XXXXXXX"
+    zapier_webhook = "https://hooks.zapier.com/hooks/catch/24088830/u4qbkjx/"
     response = requests.post(zapier_webhook, json={"text": text})
     if response.status_code == 200:
         print("✅ Sent to Zapier (Typefully/Twitter).")
