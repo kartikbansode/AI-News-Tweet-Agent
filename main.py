@@ -5,27 +5,33 @@ from typefully_bot import post_to_typefully
 
 def generate_post():
     print("Generating post with Cohere...")
-    api_key = os.getenv("COHERE_API_KEY")
+    url = "https://api.cohere.ai/v1/generate"
     headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
+        "Authorization": f"Bearer {os.getenv('COHERE_API_KEY')}",
+        "Content-Type": "application/json"
     }
-
     data = {
-        "model": "command",
+        "model": "command-light",  # or command-r-plus if you have access
         "prompt": "Write a fresh, concise, and insightful social media post about today's global news or trending topic.",
         "max_tokens": 300,
-        "temperature": 0.9,
+        "temperature": 0.7
     }
 
-    response = requests.post("https://api.cohere.ai/v1/generate", headers=headers, json=data)
-    result = response.json()
-    print("Cohere response:", result)
+    response = requests.post(url, headers=headers, json=data)
 
     try:
-        return result["generations"][0]["text"]
+        result = response.json()
+        print("Cohere response:", result)
+
+        if "generations" in result and len(result["generations"]) > 0:
+            return result["generations"][0]["text"]
+        else:
+            print("❌ Cohere failed to return valid response.")
+            return None
+
     except Exception as e:
-        print("❌ Cohere failed to return valid response.")
+        print("❌ Error decoding JSON from Cohere:", str(e))
+        print("Raw response:", response.text)
         return None
 
 if __name__ == "__main__":
