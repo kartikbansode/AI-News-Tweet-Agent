@@ -1,34 +1,36 @@
-import cohere
 import os
+import json
+import requests
 from typefully_bot import post_to_typefully
 
 def generate_post():
     print("Generating post with Cohere...")
-
     api_key = os.getenv("COHERE_API_KEY")
-    if not api_key:
-        print("❌ Error: COHERE_API_KEY not found in environment variables.")
-        return None
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
 
-    co = cohere.Client(api_key)
+    data = {
+        "model": "command",
+        "prompt": "Write a fresh, concise, and insightful social media post about today's global news or trending topic.",
+        "max_tokens": 300,
+        "temperature": 0.9,
+    }
 
-    try:
-        response = co.chat(
-            message="Write a fresh, concise, and insightful social media post about today's global news or trending topic.",
-        )
-        if hasattr(response, 'text'):
-            print("✅ Post generated successfully.")
-            return response.text.strip()
-        else:
-            print(f"❌ Unexpected Cohere response: {response}")
-            return None
-    except Exception as e:
-        print(f"❌ Error from Cohere: {e}")
+    response = requests.post("https://api.cohere.ai/v1/generate", headers=headers, json=data)
+    result = response.json()
+    print("Cohere response:", result)
+
+    if "text" in result:
+        return result["text"]
+    else:
+        print("❌ Cohere failed to return valid response.")
         return None
 
 if __name__ == "__main__":
     tweet = generate_post()
     if tweet:
-        post_to_typefully(tweet)
+        post_to_typefully(tweet.strip())
     else:
-        print("❌ No tweet generated.")
+        print("❌ No tweet was generated.")
