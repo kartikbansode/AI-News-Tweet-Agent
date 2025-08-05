@@ -3,20 +3,28 @@ import requests
 import datetime
 
 def generate_post():
-    prompt = "Write a short, engaging, tweet about the latest in Idea Global News."
-    response = requests.post(
-        "https://api.openai.com/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {os.environ['OPENAI_API_KEY']}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": "gpt-4o",
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.7,
-        }
-    )
+    print("Generating post...")
+
+    headers = {
+        "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "model": "gpt-3.5-turbo",
+        "messages": [{
+            "role": "user",
+            "content": "Write a tweet summarizing today’s biggest idea global news. Keep it under 280 characters."
+        }]
+    }
+
+    response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
+
+    # Print the full response for debugging
+    print("Response JSON:", response.json())
+
     return response.json()['choices'][0]['message']['content']
+
 
 def post_to_typefully(text):
     zapier_webhook = "https://hooks.zapier.com/hooks/catch/24088830/u4qbkjx/"
