@@ -1,14 +1,13 @@
-name: Hourly AI Post
+name: AI Social Agent
 
 on:
   schedule:
-    - cron: "0 * * * *"  # Runs every hour at minute 0 (e.g., 00:00, 01:00, ..., 23:00 UTC)
+    - cron: '0 * * * *'  # Every hour
   workflow_dispatch:
 
 jobs:
-  build:
+  run-bot:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -16,12 +15,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install requests
 
       - name: Run bot
-        run: python main.py
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python main.py
