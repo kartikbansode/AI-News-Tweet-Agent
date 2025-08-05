@@ -1,51 +1,49 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
-import time
 import os
+import time
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
 
-TYPEFULLY_EMAIL = os.getenv("TYPEFULLY_EMAIL")
-TYPEFULLY_PASSWORD = os.getenv("TYPEFULLY_PASSWORD")
-
-def post_to_typefully(tweet_text):
+def post_to_typefully(tweet):
+    print("✅ Post generated successfully.")
     print("🔁 Launching headless browser...")
+
     options = Options()
-    options.add_argument("--headless=new")
+    options.add_argument("--headless")
     options.add_argument("--disable-gpu")
     options.add_argument("--no-sandbox")
 
-    driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+    driver = webdriver.Chrome(executable_path=ChromeDriverManager().install(), options=options)
 
     try:
         driver.get("https://typefully.com/login")
-        time.sleep(3)
 
-        # Email input
-        email_input = driver.find_element(By.NAME, "email")
-        email_input.send_keys(TYPEFULLY_EMAIL)
+        # Log in with email
+        email = os.getenv("TYPEFULLY_EMAIL")
+        password = os.getenv("TYPEFULLY_PASSWORD")
 
-        driver.find_element(By.XPATH, "//button[contains(text(),'Continue')]").click()
-        time.sleep(2)
-
-        # Password input
-        password_input = driver.find_element(By.NAME, "password")
-        password_input.send_keys(TYPEFULLY_PASSWORD)
-
-        driver.find_element(By.XPATH, "//button[contains(text(),'Log in')]").click()
         time.sleep(5)
+        email_input = driver.find_element(By.NAME, "email")
+        email_input.send_keys(email)
+        email_input.submit()
 
-        # Compose new post
-        driver.get(f"https://typefully.com/new?text={tweet_text}")
-        time.sleep(3)
+        time.sleep(5)
+        password_input = driver.find_element(By.NAME, "password")
+        password_input.send_keys(password)
+        password_input.submit()
 
-        # Publish the tweet
-        publish_btn = driver.find_element(By.XPATH, "//button[contains(text(),'Publish now')]")
-        publish_btn.click()
-        time.sleep(2)
+        time.sleep(10)
+        driver.get(f"https://typefully.com/new?text={tweet}")
 
-        print("✅ Tweet published successfully on Typefully.")
+        time.sleep(10)
+
+        # Click publish
+        publish_button = driver.find_element(By.XPATH, "//button[contains(text(),'Publish')]")
+        publish_button.click()
+
+        print("✅ Tweet published successfully via Typefully.")
     except Exception as e:
-        print(f"❌ Error posting to Typefully: {e}")
+        print(f"❌ Failed to publish tweet: {e}")
     finally:
         driver.quit()
