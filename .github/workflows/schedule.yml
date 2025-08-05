@@ -1,23 +1,27 @@
-name: AI Social Agent
+name: Hourly AI Post
 
 on:
   schedule:
-    - cron: '30 * * * *'  # runs every hour at 30 minutes past
-  workflow_dispatch:      # allows manual triggering
+    - cron: "0 * * * *"  # Runs every hour at minute 0 (e.g., 00:00, 01:00, ..., 23:00 UTC)
+  workflow_dispatch:
 
 jobs:
-  run-bot:
+  build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.11
+          python-version: "3.11"
+
       - name: Install dependencies
-        run: pip install openai requests
-      - name: Run script
+        run: pip install -r requirements.txt
+
+      - name: Run bot
         run: python main.py
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          TYPEFULLY_API_KEY: ${{ secrets.TYPEFULLY_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
