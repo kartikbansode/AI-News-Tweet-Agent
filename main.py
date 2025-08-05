@@ -19,21 +19,13 @@ def generate_post():
     return response.json()['choices'][0]['message']['content']
 
 def post_to_typefully(text):
-    response = requests.post(
-        "https://api.typefully.com/v1/drafts",
-        headers={
-            "Authorization": f"Bearer {os.environ['TYPEFULLY_API_KEY']}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "text": text,
-            "autoPost": True
-        }
-    )
+    zapier_webhook = "https://hooks.zapier.com/hooks/catch/XXXXXXX"
+    response = requests.post(zapier_webhook, json={"text": text})
     if response.status_code == 200:
-        print("✅ Successfully sent to Typefully.")
+        print("✅ Sent to Zapier (Typefully/Twitter).")
     else:
-        print("❌ Failed to send to Typefully:", response.text)
+        print("❌ Failed:", response.text)
+
 
 if __name__ == "__main__":
     print("Generating post...")
