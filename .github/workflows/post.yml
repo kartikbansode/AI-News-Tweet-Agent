@@ -1,4 +1,4 @@
-name: Auto Tweet Every Hour
+name: Auto Post
 
 on:
   schedule:
@@ -6,12 +6,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  tweet:
+  run:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -21,9 +19,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run bot
-        run: python main.py
+      - name: Run main script
         env:
           COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
-          TYPEFULLY_EMAIL: ${{ secrets.TYPEFULLY_EMAIL }}
-          TYPEFULLY_PASSWORD: ${{ secrets.TYPEFULLY_PASSWORD }}
+        run: python main.py
