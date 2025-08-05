@@ -12,13 +12,12 @@ def generate_post():
 
     data = {
         "model": "command-r",
-        "prompt": "Write a short, fresh, and insightful social media post about today's global news idea.",
-        "max_tokens": 100,
-        "temperature": 0.7
+        "chat_history": [],
+        "message": "Write a fresh, concise, and insightful social media post about today's global news or trending topic."
     }
 
     response = requests.post(
-        "https://api.cohere.ai/v1/generate",
+        "https://api.cohere.ai/v1/chat",
         headers=headers,
         data=json.dumps(data)
     )
@@ -26,7 +25,7 @@ def generate_post():
     try:
         response_data = response.json()
         print("Cohere response:", response_data)
-        return response_data['generations'][0]['text'].strip()
+        return response_data['text'].strip()
     except Exception as e:
         print("❌ Cohere failed to return valid response.")
         return None
