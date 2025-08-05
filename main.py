@@ -1,43 +1,50 @@
 import os
 import requests
-import datetime
 
 def generate_post():
-    print("Generating post...")
+    print("Generating post with Gemini...")
+    
+    api_key = os.getenv("GEMINI_API_KEY")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}"
 
     headers = {
-        "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
         "Content-Type": "application/json"
     }
 
     data = {
-        "model": "gpt-3.5-turbo",
-        "messages": [{
-            "role": "user",
-            "content": "Write a tweet summarizing today’s biggest idea global news. Keep it under 280 characters."
-        }]
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "text": "Write a short tweet (max 280 characters) summarizing today's biggest global idea news. Be engaging."
+                    }
+                ]
+            }
+        ]
     }
 
-    response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
+    response = requests.post(url, headers=headers, json=data)
+    print("Gemini response:", response.json())
 
-    # Print the full response for debugging
-    print("Response JSON:", response.json())
+    try:
+        return response.json()['candidates'][0]['content']['parts'][0]['text']
+    except KeyError:
+        print("❌ Gemini failed to return valid response.")
+        return None
 
-    return response.json()['choices'][0]['message']['content']
 
+def send_to_typefully(tweet_text):
+    print("Sending tweet to Typefully...")
 
-def post_to_typefully(text):
-    zapier_webhook = "https://hooks.zapier.com/hooks/catch/24088830/u4qbkjx/"
-    response = requests.post(zapier_webhook, json={"text": text})
-    if response.status_code == 200:
-        print("✅ Sent to Zapier (Typefully/Twitter).")
-    else:
-        print("❌ Failed:", response.text)
+    # Replace with your actual Typefully Draft URL or webhook if available
+    # This is a placeholder — you may need a paid Typefully account or use a browser automation workaround.
+    print("Generated tweet:\n", tweet_text)
+    print("✅ Manually copy and paste this into Typefully.com (or automate via Puppeteer or Selenium later).")
 
 
 if __name__ == "__main__":
-    print("Generating post...")
     tweet = generate_post()
-    print("Tweet:", tweet)
-    print("Posting to Typefully...")
-    post_to_typefully(tweet)
+    if tweet:
+        send_to_typefully(tweet)
+    else:
+        print("❌ No tweet was generated.")
