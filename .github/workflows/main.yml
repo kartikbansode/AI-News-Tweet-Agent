@@ -1,16 +1,16 @@
-name: AutoTweetEveryHour
+name: Daily AI Tweet
 
 on:
   schedule:
-    - cron: '0 * * * *'  # every hour
+    - cron: "0 9 * * *"  # every day at 9 AM UTC
   workflow_dispatch:
 
 jobs:
   tweet:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -18,9 +18,11 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
 
       - name: Run bot
         env:
           COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+          CHIRR_EMAIL: ${{ secrets.CHIRR_EMAIL }}
         run: python main.py
