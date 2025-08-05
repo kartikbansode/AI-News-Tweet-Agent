@@ -3,36 +3,43 @@ import requests
 import json
 from datetime import datetime
 
-# Load Gemini API key from environment
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
 # Use Gemini Pro model
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
 
 # Prompt
 PROMPT = "Write a short, tweet-sized post (under 280 characters) about the latest global ideas or innovations."
 
+
+GEMINI_API_KEY = "AIzaSyAV-6bF4UOkyjlD0nSDwVMECFMfQ6DxmrE"  # Replace with your actual key
+
 def generate_post():
     print("Generating post with Gemini...")
 
-    headers = {"Content-Type": "application/json"}
+    endpoint = f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
+
+    headers = {
+        "Content-Type": "application/json"
+    }
+
     data = {
         "contents": [
             {
-                "parts": [{"text": PROMPT}]
+                "parts": [
+                    {
+                        "text": "Write a short, engaging Twitter post about a recent global innovation or idea."
+                    }
+                ]
             }
         ]
     }
 
-    response = requests.post(GEMINI_URL, headers=headers, data=json.dumps(data))
+    response = requests.post(endpoint, headers=headers, json=data)
     res_json = response.json()
-
     print("Gemini response:", res_json)
 
-    try:
-        text = res_json["candidates"][0]["content"]["parts"][0]["text"]
-        return text.strip()
-    except:
+    if "candidates" in res_json:
+        return res_json["candidates"][0]["content"]["parts"][0]["text"]
+    else:
         print("❌ Gemini failed to return valid response.")
         return None
 
