@@ -166,25 +166,25 @@ def create_tweet(article):
     url = urllib.parse.unquote(article.get('url', 'https://example.com'))
 
     # Combine all available text to generate summary
-    full_text = f"{title}. {description} {content}".strip()
+    combined_text = f"{description} {content}".strip()
+    full_text = f"{title}. {combined_text}" if combined_text else title
 
     # Generate summary
     summary = generate_summary(full_text)
 
-    # If summary is too short or missing, use fallback
-    if not summary or len(summary.split()) < 30:
+    # Fallback if summary is missing or too short
+    if not summary or len(summary.split()) < 20:
         summary = (
-            "This update covers significant developments. "
-            "Stakeholders are reacting as details emerge. "
-            "More updates will follow as the story evolves. "
-            "Stay tuned for further information."
+            "This is a developing story with major implications. "
+            "Key players are responding as the situation evolves. "
+            "Further updates are expected soon. Stay informed."
         )
 
     # Hashtags from title + summary
     hashtags = generate_hashtags(f"{title} {summary}")
     hashtag_string = " ".join(hashtags[:2])  # limit to 2
 
-    # Structure the tweet
+    # Structure tweet
     tweet_parts = [
         f"📰 {title}",
         "",
@@ -193,9 +193,10 @@ def create_tweet(article):
         f"🔗 Source: {url}",
         hashtag_string
     ]
+
     tweet = "\n".join(tweet_parts).strip()
 
-    # Ensure tweet is within 280 chars
+    # Trim to 280 characters if needed
     if len(tweet) > 280:
         allowed_summary_len = 280 - (len(f"📰 {title}\n\n🔗 Source: {url}\n{hashtag_string}") + 6)
         summary_sentences = re.split(r'(?<=[.!?]) +', summary)
@@ -210,6 +211,7 @@ def create_tweet(article):
 
     print(f"📝 Generated tweet ({len(tweet)} chars):\n{'-' * 50}\n{tweet}\n{'-' * 50}")
     return tweet
+
 
 def main():
     try:
