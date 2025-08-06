@@ -1,6 +1,7 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.keys import Keys
 from webdriver_manager.chrome import ChromeDriverManager
 import time
@@ -14,7 +15,8 @@ def post_to_twitter(tweet):
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
 
-    driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
 
     try:
         driver.get("https://twitter.com/login")
@@ -26,7 +28,7 @@ def post_to_twitter(tweet):
         email_input.send_keys(Keys.RETURN)
         time.sleep(3)
 
-        # Check for possible username screen
+        # Check for username screen (sometimes Twitter asks for it again)
         try:
             username_input = driver.find_element(By.NAME, "text")
             username_input.send_keys(Keys.RETURN)
