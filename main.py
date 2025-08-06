@@ -16,37 +16,37 @@ TWITTER_ACCESS_TOKEN_SECRET = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET")
 COUNTRIES = ["us", "gb", "ca", "au", "in", "fr", "de", "jp", "cn", "br"]
 SOURCES = ["bbc-news", "al-jazeera-english", "reuters", "cnn", "the-guardian-uk"]
 
-# Different post structure templates
+# Different post structure templates - optimized for character limits
 POST_TEMPLATES = [
     {
         "name": "headline_first",
         "emoji": "📰",
-        "structure": "{emoji} {title}\n\n{summary}\n\n{hashtags}\n\n🔗 Read more: {url}"
+        "structure": "{emoji} {title}\n\n{summary}\n\n{hashtags}\n\n🔗 {url}"
     },
     {
         "name": "breaking_style", 
         "emoji": "🚨",
-        "structure": "{emoji} BREAKING: {title}\n\n📋 What's happening:\n{summary}\n\n{hashtags}\n\n📖 Full story: {url}"
+        "structure": "{emoji} {title}\n\n{summary}\n\n{hashtags}\n\n📖 {url}"
     },
     {
         "name": "world_update",
         "emoji": "🌍", 
-        "structure": "{emoji} Global Update\n\n📢 {title}\n\n💡 Key details:\n{summary}\n\n{hashtags}\n\n👉 More info: {url}"
+        "structure": "{emoji} {title}\n\n{summary}\n\n{hashtags}\n\n👉 {url}"
     },
     {
         "name": "news_flash",
         "emoji": "⚡",
-        "structure": "{emoji} NEWS FLASH\n\n{title}\n\n🔍 Here's what we know:\n{summary}\n\n{hashtags}\n\n📰 Continue reading: {url}"
+        "structure": "{emoji} {title}\n\n{summary}\n\n{hashtags}\n\n📰 {url}"
     },
     {
         "name": "daily_briefing",
         "emoji": "📊",
-        "structure": "{emoji} Today's Brief\n\n{title}\n\n📝 Summary for you:\n{summary}\n\n{hashtags}\n\n🌐 Source: {url}"
+        "structure": "{emoji} {title}\n\n{summary}\n\n{hashtags}\n\n🌐 {url}"
     },
     {
         "name": "story_spotlight",
         "emoji": "🔦",
-        "structure": "{emoji} Story Spotlight\n\n📰 {title}\n\n💬 What you need to know:\n{summary}\n\n{hashtags}\n\n📱 Read the full article: {url}"
+        "structure": "{emoji} {title}\n\n{summary}\n\n{hashtags}\n\n📱 {url}"
     }
 ]
 
@@ -206,12 +206,17 @@ def fetch_news():
             article = random.choice(available_articles)
             print(f"✅ Selected article: {article['title']}")
             
-            # Clean and return article data
+            # Clean and return article data - handle None values safely
+            title = article.get("title") or "Untitled News"
+            description = article.get("description") or ""
+            content = article.get("content") or ""
+            url = article.get("url") or ""
+            
             return {
-                "title": article.get("title", "Untitled News").strip(),
-                "description": article.get("description", "").strip(),
-                "content": article.get("content", "").strip(),
-                "url": article.get("url", "").strip(),
+                "title": title.strip() if title else "Untitled News",
+                "description": description.strip() if description else "",
+                "content": content.strip() if content else "",
+                "url": url.strip() if url else "",
                 "published_at": article.get("publishedAt", datetime.utcnow().isoformat())
             }
             
@@ -317,23 +322,37 @@ def generate_contextual_hashtags(text, article_title):
 
 def create_tweet(article):
     """Create a tweet with variable structure and enhanced content."""
-    # Combine all available text more effectively
+    # Safely extract data with None handling
     title = article.get('title', 'Breaking News')
     description = article.get('description', '')
     content = article.get('content', '')
     url = article.get('url', 'https://example.com')
     
-    # Create comprehensive text for summary
-    full_text_parts = [title]
-    if description:
-        full_text_parts.append(description)
-    if content:
-        full_text_parts.append(content)
+    # Handle None values
+    title = title or 'Breaking News'
+    description = description or ''
+    content = content or ''
+    url = url or 'https://example.com'
     
-    full_text = " ".join(full_text_parts).strip()
+    # Create comprehensive text for summary - build safely
+    full_text_parts = []
+    if title and len(title.strip()) > 0:
+        full_text_parts.append(title.strip())
+    if description and len(description.strip()) > 0:
+        full_text_parts.append(description.strip())
+    if content and len(content.strip()) > 0:
+        full_text_parts.append(content.strip())
+    
+    full_text = " ".join(full_text_parts) if full_text_parts else "Breaking news update from our sources."
     
     print(f"📄 Full text length: {len(full_text)} characters")
     print(f"📄 Text preview: {full_text[:150]}...")
+    
+    # Smart title shortening for long titles
+    display_title = title
+    if len(title) > 80:  # If title is too long
+        display_title = title[:77] + "..."
+        print(f"✂️ Shortened title: {display_title}")
     
     # Generate summary and hashtags
     summary = generate_enhanced_summary(full_text)
@@ -347,11 +366,11 @@ def create_tweet(article):
     template = random.choice(POST_TEMPLATES)
     print(f"🎨 Using template: {template['name']}")
     
-    # Create initial tweet
+    # Create initial tweet with shortened title
     try:
         tweet = template['structure'].format(
             emoji=template['emoji'],
-            title=title,
+            title=display_title,
             summary=summary,
             hashtags=hashtag_string,
             url=url
@@ -359,53 +378,71 @@ def create_tweet(article):
     except KeyError as e:
         print(f"❌ Template formatting error: {e}")
         # Fallback to simple format
-        tweet = f"📰 {title}\n\n{summary}\n\n{hashtag_string}\n\n🔗 {url}"
+        tweet = f"📰 {display_title}\n\n{summary}\n\n{hashtag_string}\n\n🔗 {url}"
     
     print(f"📏 Initial tweet length: {len(tweet)}")
     
-    # Trim if too long
+    # Smart trimming if still too long
     if len(tweet) > 270:
-        print("✂️ Tweet too long, trimming...")
+        print("✂️ Tweet still too long, applying smart trimming...")
         
-        # Calculate available space for summary
-        base_template = f"{template['emoji']} {title}\n\n{{SUMMARY}}\n\n{hashtag_string}\n\n🔗 {url}"
-        available_for_summary = 270 - (len(base_template) - len('{SUMMARY}'))
+        # Strategy 1: Further shorten title if needed
+        if len(display_title) > 60:
+            display_title = title[:57] + "..."
+        
+        # Strategy 2: Limit hashtags
+        if len(hashtags) > 3:
+            hashtags = hashtags[:3]
+            hashtag_string = " ".join(hashtags)
+        
+        # Strategy 3: Calculate available space for summary
+        base_parts = [
+            template['emoji'],
+            display_title,
+            hashtag_string,
+            url
+        ]
+        
+        # Estimate space used by template structure (emojis, labels, newlines)
+        structure_overhead = 50  # Rough estimate for template formatting
+        base_content_length = sum(len(str(part)) for part in base_parts) + structure_overhead
+        available_for_summary = 270 - base_content_length
         
         print(f"📏 Available space for summary: {available_for_summary}")
         
-        if available_for_summary > 50:  # Ensure minimum summary length
+        if available_for_summary > 30:  # Ensure minimum summary length
             # Trim summary to fit
             words = summary.split()
             trimmed_summary = ""
             for word in words:
-                if len(trimmed_summary + word + " ") <= available_for_summary - 3:  # -3 for "..."
+                test_length = len(trimmed_summary + word + " ")
+                if test_length <= available_for_summary - 3:  # -3 for "..."
                     trimmed_summary += word + " "
                 else:
                     break
             
-            if trimmed_summary:
-                summary = trimmed_summary.strip() + "..."
-            else:
-                summary = summary[:available_for_summary-3] + "..."
+            summary = (trimmed_summary.strip() + "...") if trimmed_summary else "Breaking news update..."
         else:
-            # Very tight space - use minimal format
-            summary = "Breaking news update..."
+            # Very tight space - minimal summary
+            summary = "News update..."
         
-        # Recreate tweet with trimmed summary
+        # Recreate tweet with optimized content
         try:
             tweet = template['structure'].format(
                 emoji=template['emoji'],
-                title=title,
+                title=display_title,
                 summary=summary,
                 hashtags=hashtag_string,
                 url=url
             )
-        except:
-            # Ultimate fallback
-            tweet = f"📰 {title[:100]}\n\n{summary[:80]}\n\n{hashtag_string}\n\n{url}"
+        except Exception as e:
+            print(f"❌ Template error during trimming: {e}")
+            # Ultimate fallback - simple clean format
+            tweet = f"📰 {display_title}\n\n{summary}\n\n{hashtag_string}\n\n{url}"
     
-    # Final length check
+    # Final safety check
     if len(tweet) > 280:
+        print("⚠️ Final trim needed...")
         tweet = tweet[:277] + "..."
     
     return tweet
