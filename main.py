@@ -159,16 +159,32 @@ def generate_hashtags(text):
     return hashtags + trending
 
 def create_tweet(article):
+    """Create a properly structured tweet from the article."""
     title = article.get('title', 'Breaking News').strip()
-    description = article.get('description', '')
-    content = article.get('content', '')
+    description = article.get('description', '').strip()
+    content = article.get('content', '').strip()
     url = urllib.parse.unquote(article.get('url', 'https://example.com'))
-    full_text = f"{description} {content}".strip()
 
+    # Combine all available text to generate summary
+    full_text = f"{title}. {description} {content}".strip()
+
+    # Generate summary
     summary = generate_summary(full_text)
-    hashtags = generate_hashtags(title + " " + summary)
-    hashtag_string = " ".join(hashtags[:2])
 
+    # If summary is too short or missing, use fallback
+    if not summary or len(summary.split()) < 30:
+        summary = (
+            "This update covers significant developments. "
+            "Stakeholders are reacting as details emerge. "
+            "More updates will follow as the story evolves. "
+            "Stay tuned for further information."
+        )
+
+    # Hashtags from title + summary
+    hashtags = generate_hashtags(f"{title} {summary}")
+    hashtag_string = " ".join(hashtags[:2])  # limit to 2
+
+    # Structure the tweet
     tweet_parts = [
         f"📰 {title}",
         "",
@@ -177,9 +193,9 @@ def create_tweet(article):
         f"🔗 Source: {url}",
         hashtag_string
     ]
-
     tweet = "\n".join(tweet_parts).strip()
 
+    # Ensure tweet is within 280 chars
     if len(tweet) > 280:
         allowed_summary_len = 280 - (len(f"📰 {title}\n\n🔗 Source: {url}\n{hashtag_string}") + 6)
         summary_sentences = re.split(r'(?<=[.!?]) +', summary)
