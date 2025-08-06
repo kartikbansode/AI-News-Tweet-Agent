@@ -3,54 +3,28 @@ name: Post News to Twitter
 on:
   schedule:
     - cron: '0 */4 * * *'  # Runs every 4 hours (0:00, 4:00, 8:00, 12:00, 16:00, 20:00 UTC)
+  workflow_dispatch:  # Allows manual triggering
 
 jobs:
   post-news:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Grant write access for git push
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          repository: kartikbansode/ai-social-agent
-          fetch-depth: 1
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
-      - name: Check API Limits
-        run: |
-          # Twitter API limit check (50 posts/month for free tier)
-          TWITTER_POSTS_REMAINING=$(python -c "import requests, os; token = os.environ['TWITTER_API_KEY']; headers = {'Authorization': f'Bearer {token}'}; resp = requests.get('https://api.twitter.com/2/application/rate_limit_status', headers=headers); data = resp.json(); print(data.get('resources', {}).get('tweets', {}).get('remaining', 0) or 50)")  # Default to 50 if unavailable
-          echo "Twitter posts remaining: $TWITTER_POSTS_REMAINING"
-          if [ "$TWITTER_POSTS_REMAINING" -le 0 ]; then
-            echo "Twitter API post limit exceeded. Aborting."
-            exit 1
-          fi
-
-          # NewsAPI limit check (100 requests/day)
-          NEWS_REQUESTS_TODAY=$(python -c "import os; print(sum(1 for line in open('news_requests.log', 'a+').readlines() if 'NewsAPI request' in line and '2025-08-06' in line) if os.path.exists('news_requests.log') else 0)")
-          echo "NewsAPI requests today: $NEWS_REQUESTS_TODAY"
-          if [ "$NEWS_REQUESTS_TODAY" -ge 100 ]; then
-            echo "NewsAPI request limit (100/day) exceeded. Aborting."
-            exit 1
-          fi
-
-          # GitHub Actions minutes check (2,000 minutes/month)
-          MINUTES_USED=$(gh api /users/:current -q ".usage.minutes_used")
-          MINUTES_LIMIT=2000
-          echo "GitHub Actions minutes used: $MINUTES_USED"
-          if [ "$MINUTES_USED" -ge "$MINUTES_LIMIT" ]; then
-            echo "GitHub Actions minutes limit (2,000/month) exceeded. Aborting."
-            exit 1
-          fi
 
       - name: Run news posting script
         env:
@@ -59,14 +33,16 @@ jobs:
           TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
           TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
           TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
-        run: |
-          echo "$(date -u +'%Y-%m-%dT%H:%M:%SZ') NewsAPI request" >> news_requests.log  # Log NewsAPI request
-          python main.py
+        run: python main.py
 
-      - name: Commit and push changes
+
+
+      - name: Commit posted_articles.json
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add posted_articles.json
           git commit -m "Update posted_articles.json" || echo "No changes to commit"
           git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
