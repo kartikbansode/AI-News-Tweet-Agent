@@ -22,6 +22,40 @@ twitter = TwitterClient(
 COUNTRIES = ["us", "gb", "ca", "au", "in", "fr", "de", "jp", "cn", "br"]
 SOURCES = ["bbc-news", "al-jazeera-english", "reuters", "cnn", "the-guardian-uk"]
 
+# Different post structure templates
+POST_TEMPLATES = [
+    {
+        "name": "headline_first",
+        "emoji": "📰",
+        "structure": "{emoji} {title}\n\n{summary}\n\n{hashtags}\n\n🔗 Read more: {url}"
+    },
+    {
+        "name": "breaking_style", 
+        "emoji": "🚨",
+        "structure": "{emoji} BREAKING: {title}\n\n📋 What's happening:\n{summary}\n\n{hashtags}\n\n📖 Full story: {url}"
+    },
+    {
+        "name": "world_update",
+        "emoji": "🌍", 
+        "structure": "{emoji} Global Update\n\n📢 {title}\n\n💡 Key details:\n{summary}\n\n{hashtags}\n\n👉 More info: {url}"
+    },
+    {
+        "name": "news_flash",
+        "emoji": "⚡",
+        "structure": "{emoji} NEWS FLASH\n\n{title}\n\n🔍 Here's what we know:\n{summary}\n\n{hashtags}\n\n📰 Continue reading: {url}"
+    },
+    {
+        "name": "daily_briefing",
+        "emoji": "📊",
+        "structure": "{emoji} Today's Brief\n\n{title}\n\n📝 Summary for you:\n{summary}\n\n{hashtags}\n\n🌐 Source: {url}"
+    },
+    {
+        "name": "story_spotlight",
+        "emoji": "🔦",
+        "structure": "{emoji} Story Spotlight\n\n📰 {title}\n\n💬 What you need to know:\n{summary}\n\n{hashtags}\n\n📱 Read the full article: {url}"
+    }
+]
+
 def load_posted_urls():
     """Load previously posted article URLs."""
     try:
@@ -31,7 +65,7 @@ def load_posted_urls():
             if not content:
                 print("posted_articles.json is empty, initializing with []")
                 return []
-            return json.load(f)
+            return json.loads(content)
     except (json.JSONDecodeError, FileNotFoundError) as e:
         print(f"Error loading posted_articles.json: {str(e)}. Initializing with []")
         with open("posted_articles.json", "w") as f:
@@ -87,41 +121,133 @@ def fetch_news():
     return {
         "title": "Latest News Update",
         "description": "Stay tuned for the latest global news stories.",
-        "content": "Follow @verixanews",
-        "url": "",
+        "content": "We're unable to fetch a new article right now, but check back for breaking news and updates from around the world.",
+        "url": "https://newsapi.org",
         "published_at": datetime.utcnow().isoformat()
     }
 
-def generate_summary(text):
-    """Generate a 4-6 line summary (50-80 words)."""
-    sentences = text.split(". ")
-    summary_sentences = sentences[:6]  # Take up to 6 sentences
-    summary = ". ".join([s for s in summary_sentences if s])[:500]  # Limit to 500 chars
+def generate_enhanced_summary(text):
+    """Generate a more comprehensive 6-10 line summary (80-120 words) for better understanding."""
+    # Combine all available text sources
+    full_text = text.strip()
+    
+    # Split into sentences and clean them
+    sentences = [s.strip() for s in full_text.split(". ") if s.strip()]
+    
+    # Take more sentences for better context (8-12 sentences)
+    summary_sentences = sentences[:12]
+    
+    # Join sentences and ensure proper formatting
+    summary = ". ".join(summary_sentences)
+    if summary and not summary.endswith('.'):
+        summary += "."
+    
+    # Limit to reasonable length but allow more content
+    if len(summary) > 600:
+        summary = summary[:600] + "..."
+    
+    # Ensure we have enough words for newcomers to understand
     words = summary.split()
-    if len(words) > 80:
-        summary = " ".join(words[:80]) + "..."  # Truncate to ~80 words
-    elif len(words) < 50 and len(text) > len(summary):
-        summary = summary + " " + text[len(summary):len(summary)+100]
+    if len(words) < 80 and len(full_text) > len(summary):
+        # Add more context if summary is too short
+        remaining_text = full_text[len(summary):len(summary)+200]
+        if remaining_text:
+            summary = summary + " " + remaining_text.strip()
+            if len(summary) > 600:
+                summary = summary[:600] + "..."
+    elif len(words) > 120:
+        # Trim if too long but keep it informative
+        summary = " ".join(words[:120]) + "..."
+    
     return summary.strip()
 
-def generate_hashtags(text):
-    """Generate relevant hashtags from text."""
-    words = text.lower().split()
-    keywords = [word.strip(".,!?") for word in words if len(word) > 4 and word.isalpha()]
-    hashtags = [f"#{word.capitalize()}" for word in keywords[:3]]  # Pick top 3 keywords
-    trending = ["#BreakingNews", "#WorldNews", "#NewsUpdate"]
-    return hashtags + trending
+def generate_contextual_hashtags(text, article_title):
+    """Generate more relevant and varied hashtags based on content."""
+    # Extract keywords from both title and content
+    all_text = f"{article_title} {text}".lower()
+    words = all_text.split()
+    
+    # Filter for meaningful keywords
+    keywords = []
+    for word in words:
+        clean_word = word.strip(".,!?()[]{}\"'")
+        if (len(clean_word) > 4 and 
+            clean_word.isalpha() and 
+            clean_word not in ['the', 'and', 'that', 'this', 'with', 'from', 'they', 'have', 'been', 'said', 'will', 'would', 'could', 'should']):
+            keywords.append(clean_word)
+    
+    # Remove duplicates and get top keywords
+    unique_keywords = list(dict.fromkeys(keywords))[:4]
+    content_hashtags = [f"#{word.capitalize()}" for word in unique_keywords]
+    
+    # Varied trending hashtags pools
+    trending_pools = [
+        ["#BreakingNews", "#WorldNews", "#NewsUpdate"],
+        ["#GlobalNews", "#NewsAlert", "#CurrentEvents"],
+        ["#NewsToday", "#Breaking", "#WorldUpdate"],
+        ["#Headlines", "#NewsFlash", "#GlobalUpdate"],
+        ["#TodayNews", "#WorldEvents", "#NewsNow"]
+    ]
+    
+    # Randomly select a trending pool
+    trending = random.choice(trending_pools)
+    
+    # Combine and limit total hashtags
+    all_hashtags = content_hashtags + trending
+    return all_hashtags[:6]  # Limit to 6 total hashtags
 
 def create_tweet(article):
-    """Create a properly structured tweet from the article."""
-    text = f"{article['title']} {article['description']} {article['content']}"
-    summary = generate_summary(text)
-    hashtags = generate_hashtags(text)
-    tweet = f"{article['title']}\n\n{summary}\n\nRead more: {article['url']}\n{' '.join(hashtags)}"
+    """Create a tweet with variable structure and enhanced content."""
+    # Combine all available text for better summary
+    full_text = f"{article['title']} {article['description']} {article['content']}".strip()
+    
+    # Generate enhanced summary with more content
+    summary = generate_enhanced_summary(full_text)
+    
+    # Generate contextual hashtags
+    hashtags = generate_contextual_hashtags(full_text, article['title'])
+    hashtag_string = " ".join(hashtags)
+    
+    # Randomly select a post template
+    template = random.choice(POST_TEMPLATES)
+    print(f"Using template: {template['name']}")
+    
+    # Format the tweet using the selected template
+    tweet = template['structure'].format(
+        emoji=template['emoji'],
+        title=article['title'],
+        summary=summary,
+        hashtags=hashtag_string,
+        url=article['url']
+    )
+    
+    # Ensure tweet fits within character limit
     if len(tweet) > 280:
-        max_summary_len = 280 - len(f"🌍 {article['title']}\n\nRead more: {article['url']}\n{' '.join(hashtags)}") - 3
-        summary = summary[:max_summary_len] + "..."
-        tweet = f"{article['title']}\n\n{summary}\n\nRead more: {article['url']}\n{' '.join(hashtags)}"
+        # Calculate available space for summary
+        template_without_summary = template['structure'].replace('{summary}', '')
+        other_content_length = len(template_without_summary.format(
+            emoji=template['emoji'],
+            title=article['title'],
+            hashtags=hashtag_string,
+            url=article['url']
+        ))
+        
+        max_summary_length = 280 - other_content_length - 5  # 5 chars buffer
+        
+        if max_summary_length > 50:  # Ensure minimum meaningful summary length
+            summary = summary[:max_summary_length].rsplit(' ', 1)[0] + "..."
+            tweet = template['structure'].format(
+                emoji=template['emoji'],
+                title=article['title'],
+                summary=summary,
+                hashtags=hashtag_string,
+                url=article['url']
+            )
+        else:
+            # Fallback to simpler format if content is too long
+            simple_tweet = f"{template['emoji']} {article['title']}\n\n{summary[:150]}...\n\n{hashtag_string}\n\n{article['url']}"
+            tweet = simple_tweet[:280]
+    
     return tweet
 
 def main():
