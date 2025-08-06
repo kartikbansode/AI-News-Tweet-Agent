@@ -2,7 +2,6 @@ import os
 import requests
 from datetime import datetime
 from twitter_api import TwitterClient  # Custom Twitter API wrapper
-from transformers import pipeline  # Hugging Face transformers for summarization
 
 # Environment variables (set in GitHub Secrets)
 NEWS_API_KEY = os.environ.get("NEWS_API_KEY")
@@ -35,21 +34,25 @@ def fetch_news():
         "published_at": article["publishedAt"]
     }
 
-def summarize_text(text):
-    """Summarize text to fit within 280 characters using Hugging Face."""
-    summarizer = pipeline("summarization", model="t5-small")
-    max_length = 50  # Adjust to keep tweet under 280 chars with URL
-    summary = summarizer(text, max_length=max_length, min_length=20, do_sample=False)
-    return summary[0]["summary_text"]
+def generate_hashtags(text):
+    """Generate relevant hashtags from text."""
+    # Simple keyword extraction (replace with AI API call if available)
+    words = text.lower().split()
+    keywords = [word.strip(".,!?") for word in words if len(word) > 4 and word.isalpha()]
+    hashtags = [f"#{word.capitalize()}" for word in keywords[:3]]  # Pick top 3 keywords
+    # Add trending hashtags relevant to news
+    trending = ["#BreakingNews", "#WorldNews", "#NewsUpdate"]
+    return hashtags + trending
 
 def create_tweet(article):
-    """Create a tweet from the article."""
+    """Create a tweet from the article with hashtags."""
     text = f"{article['title']} {article['description']}"
-    summary = summarize_text(text)
-    tweet = f"🌍 {summary}\nRead more: {article['url']}"
+    hashtags = generate_hashtags(text)
+    tweet = f"🌍 {article['title']}\nRead more: {article['url']} {' '.join(hashtags)}"
     if len(tweet) > 280:
-        summary = summarize_text(text[:500])  # Truncate and retry
-        tweet = f"🌍 {summary}\nRead more: {article['url']}"
+        # Truncate title to fit within 280 characters
+        max_title_len = 280 - len(f"\nRead more: {article['url']} {' '.join(hashtags)}") - 3
+        tweet = f"🌍 {article['title'][:max_title_len]}...\nRead more: {article['url']} {' '.join(hashtags)}"
     return tweet
 
 def main():
