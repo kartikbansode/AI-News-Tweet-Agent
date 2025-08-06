@@ -18,7 +18,7 @@ twitter = TwitterClient(
     TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET
 )
 
-# List of countries for varied news
+# List of countries for varied news (fallback if main query fails)
 COUNTRIES = ["us", "gb", "ca", "au", "in", "fr", "de", "jp", "cn", "br"]
 
 def load_posted_urls():
@@ -33,32 +33,45 @@ def save_posted_url(url):
     """Save a new article URL to the list."""
     posted_urls = load_posted_urls()
     posted_urls.append(url)
+    # Limit to last 100 URLs to prevent file growth
     with open("posted_articles.json", "w") as f:
-        json.dump(posted_urls, f)
+        json.dump(posted_urls[-100:], f)
 
 def fetch_news():
     """Fetch latest global news from NewsAPI, ensuring variety."""
-    country = random.choice(COUNTRIES)
-    url = f"https://newsapi.org/v2/top-headlines?category=general&language=en&country={country}&apiKey={NEWS_API_KEY}"
-    response = requests.get(url)
-    if response.status_code != 200:
-        raise Exception(f"NewsAPI error: {response.status_code} {response.text}")
-    articles = response.json().get("articles", [])
-    if not articles:
-        raise Exception("No articles found")
     posted_urls = load_posted_urls()
-    # Filter out previously posted articles
-    available_articles = [a for a in articles if a["url"] not in posted_urls]
-    if not available_articles:
-        raise Exception("No new articles available")
-    article = random.choice(available_articles)  # Pick a random new article
-    return {
-        "title": article["title"],
-        "description": article["description"] or "",
-        "content": article.get("content", "") or "",
-        "url": article["url"],
-        "published_at": article["publishedAt"]
-    }
+    # Try general query first
+    queries = [
+        f"https://newsapi.org/v2/top-headlines?category=general&language=en&apiKey={NEWS_API_KEY}",
+        *[f"https://newsapi.org/v2/top-headlines?category=general&language=en&country={country}&apiKey={NEWS_API_KEY}" for country in COUNTRIES]
+    ]
+    for url in queries:
+        try:
+            response = requests.get(url)
+            if response.status_code != 200:
+                print(f"NewsAPI error for {url}: {response.status_code} {response.text}")
+                continue
+            articles = response.json().get("articles", [])
+            if not articles:
+                print(f"No articles found for {url}")
+                continue
+            # Filter out previously posted articles
+            available_articles = [a for a in articles if a["url"] not in posted_urls]
+            if not available_articles:
+                print(f"No new articles available for {url}")
+                continue
+            article = random.choice(available_articles)  # Pick a random new article
+            return {
+                "title": article["title"],
+                "description": article["description"] or "",
+                "content": article.get("content", "") or "",
+                "url": article["url"],
+                "published_at": article["publishedAt"]
+            }
+        except Exception as e:
+            print(f"Error fetching news from {url}: {str(e)}")
+            continue
+    raise Exception("No articles found after trying all queries")
 
 def generate_summary(text):
     """Generate a 4-6 line summary (50-80 words)."""
@@ -83,28 +96,4 @@ def generate_hashtags(text):
 def create_tweet(article):
     """Create a properly structured tweet from the article."""
     text = f"{article['title']} {article['description']}"
-    summary = generate_summary(text)
-    hashtags = generate_hashtags(text)
-    tweet = f"🌍 {article['title']}\n\n{summary}\n\nRead more: {article['url']}\n{' '.join(hashtags)}"
-    if len(tweet) > 280:
-        # Truncate summary to fit within 280 characters
-        max_summary_len = 280 - len(f"🌍 {article['title']}\n\nRead more: {article['url']}\n{' '.join(hashtags)}") - 3
-        summary = summary[:max_summary_len] + "..."
-        tweet = f"🌍 {article['title']}\n\n{summary}\n\nRead more: {article['url']}\n{' '.join(hashtags)}"
-    return tweet
-
-def main():
-    try:
-        # Fetch and process news
-        article = fetch_news()
-        tweet = create_tweet(article)
-        # Post to Twitter
-        twitter.post_tweet(tweet)
-        print(f"Posted tweet: {tweet}")
-        # Save the posted article URL
-        save_posted_url(article["url"])
-    except Exception as e:
-        print(f"Error: {str(e)}")
-
-if __name__ == "__main__":
-    main()
+    summary = generate
