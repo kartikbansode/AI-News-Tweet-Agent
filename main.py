@@ -87,8 +87,8 @@ def fetch_news():
     return {
         "title": "Latest News Update",
         "description": "Stay tuned for the latest global news stories.",
-        "content": "We're unable to fetch a new article right now, but check back for breaking news and updates from around the world.",
-        "url": "https://newsapi.org",
+        "content": "Follow @verixanews",
+        "url": "",
         "published_at": datetime.utcnow().isoformat()
     }
 
@@ -117,11 +117,11 @@ def create_tweet(article):
     text = f"{article['title']} {article['description']} {article['content']}"
     summary = generate_summary(text)
     hashtags = generate_hashtags(text)
-    tweet = f"🌍 {article['title']}\n\n{summary}\n\nRead more: {article['url']}\n{' '.join(hashtags)}"
+    tweet = f"{article['title']}\n\n{summary}\n\nRead more: {article['url']}\n{' '.join(hashtags)}"
     if len(tweet) > 280:
         max_summary_len = 280 - len(f"🌍 {article['title']}\n\nRead more: {article['url']}\n{' '.join(hashtags)}") - 3
         summary = summary[:max_summary_len] + "..."
-        tweet = f"🌍 {article['title']}\n\n{summary}\n\nRead more: {article['url']}\n{' '.join(hashtags)}"
+        tweet = f"{article['title']}\n\n{summary}\n\nRead more: {article['url']}\n{' '.join(hashtags)}"
     return tweet
 
 def main():
