@@ -161,11 +161,11 @@ def create_tweet(article):
     hashtags = generate_hashtags(full_text)
     hashtag_string = " ".join(hashtags)
     
-    tweet = f"{display_title}\n\n{summary}\n\nRead more: {url}\n{hashtag_string}"
+    tweet = f"{display_title}\n\n{summary}\n\n🌐 Source: {url}\n{hashtag_string}"
     if len(tweet) > 280:
-        max_summary_len = 280 - len(f"🌍 {display_title}\n\nRead more: {url}\n{hashtag_string}") - 3
+        max_summary_len = 280 - len(f"🌍 {display_title}\n\n🌐 Source: {url}\n{hashtag_string}") - 3
         summary = summary[:max_summary_len] + "..."
-        tweet = f"{display_title}\n\n{summary}\n\nRead more: {url}\n{hashtag_string}"
+        tweet = f"{display_title}\n\n{summary}\n\n🌐 Source: {url}\n{hashtag_string}"
     
     print(f"📝 Generated tweet ({len(tweet)} chars):\n{'-' * 50}\n{tweet}\n{'-' * 50}")
     return tweet
