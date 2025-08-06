@@ -27,24 +27,25 @@ SOURCES = ["bbc-news", "al-jazeera-english", "reuters", "cnn", "the-guardian-uk"
 def load_posted_urls():
     """Load previously posted article URLs."""
     try:
-        with open("posted_articles.json", "r") as f:
+        with open("posted_articles.json", "r", encoding='utf-8') as f:
             content = f.read().strip()
             print(f"📂 Content of posted_articles.json: {content}")
             if not content:
                 print("📂 posted_articles.json is empty, initializing with []")
                 return []
-            return [urllib.parse.unquote(url) for url in json.loads(content)]  # Decode URLs
+            return [urllib.parse.unquote(url.encode().decode('unicode_escape')) for url in json.loads(content)]  # Decode URLs fully
     except (json.JSONDecodeError, FileNotFoundError) as e:
         print(f"📂 Error loading posted_articles.json: {str(e)}. Initializing with []")
-        with open("posted_articles.json", "w") as f:
+        with open("posted_articles.json", "w", encoding='utf-8') as f:
             json.dump([], f)
         return []
 
 def save_posted_url(url):
     """Save a new article URL to the list."""
     posted_urls = load_posted_urls()
-    posted_urls.append(urllib.parse.unquote(url))  # Decode URL
-    with open("posted_articles.json", "w") as f:
+    decoded_url = urllib.parse.unquote(url.encode().decode('unicode_escape'))  # Decode URL fully
+    posted_urls.append(decoded_url)
+    with open("posted_articles.json", "w", encoding='utf-8') as f:
         json.dump(posted_urls[-100:], f)  # Limit to last 100 URLs
 
 def fetch_news():
@@ -74,7 +75,7 @@ def fetch_news():
                 continue
             available_articles = [
                 a for a in articles
-                if a.get("url") and urllib.parse.unquote(a["url"]) not in posted_urls and a.get("title") and len(a.get("title", "")) > 10
+                if a.get("url") and urllib.parse.unquote(a["url"].encode().decode('unicode_escape')) not in posted_urls and a.get("title") and len(a.get("title", "")) > 10
             ]
             if not available_articles:
                 print(f"📰 No new quality articles available for {url}")
@@ -85,7 +86,7 @@ def fetch_news():
                 "title": (article.get("title") or "Untitled News").strip(),
                 "description": (article.get("description") or "").strip(),
                 "content": (article.get("content") or "").strip(),
-                "url": urllib.parse.unquote(article.get("url") or "").strip(),
+                "url": urllib.parse.unquote(article.get("url").encode().decode('unicode_escape') or "").strip(),
                 "published_at": article.get("publishedAt", datetime.utcnow().isoformat())
             }
         except Exception as e:
@@ -124,7 +125,7 @@ def generate_summary(text):
     summary = ""
     sentence_count = 0
     for sentence in sentences:
-        if sentence_count < 7 and len(summary + sentence + ". ") <= 900:  # Increased limit
+        if sentence_count < 7 and len(summary + sentence + ". ") <= 1000:  # Increased limit
             summary += sentence + ". "
             sentence_count += 1
         if sentence_count >= 7:
@@ -136,7 +137,7 @@ def generate_summary(text):
         remaining_sentences = re.split(r'[.!?]+', remaining_text)
         remaining_sentences = [s.strip() for s in remaining_sentences if s.strip() and len(s.strip()) > 10]
         for sentence in remaining_sentences:
-            if sentence_count < 7 and len(summary + sentence + ". ") <= 900:
+            if sentence_count < 7 and len(summary + sentence + ". ") <= 1000:
                 summary += sentence + ". "
                 sentence_count += 1
             if sentence_count >= 7:
@@ -148,7 +149,7 @@ def generate_summary(text):
         fallback_sentences = re.split(r'[.!?]+', fallback_text)
         fallback_sentences = [s.strip() for s in fallback_sentences if s.strip()]
         for sentence in fallback_sentences:
-            if sentence_count < 7 and len(summary + sentence + ". ") <= 900:
+            if sentence_count < 7 and len(summary + sentence + ". ") <= 1000:
                 summary += sentence + ". "
                 sentence_count += 1
             if sentence_count >= 7:
@@ -175,7 +176,7 @@ def generate_summary(text):
     
     # Ensure minimum 60 words
     if word_count < 60 and len(full_text) > len(summary):
-        summary += " " + full_text[len(summary):len(summary)+700]
+        summary += " " + full_text[len(summary):len(summary)+800]
         words = summary.split()
         if len(words) > 100:
             temp_summary = ""
@@ -222,7 +223,7 @@ def create_tweet(article):
     title = article.get('title', 'Breaking News')
     description = article.get('description', '')
     content = article.get('content', '')
-    url = urllib.parse.unquote(article.get('url', 'https://example.com'))
+    url = urllib.parse.unquote(article.get('url', 'https://example.com').encode().decode('unicode_escape'))
     full_text = f"{title} {description} {content}".strip()
     
     # Generate summary and hashtags
@@ -230,8 +231,8 @@ def create_tweet(article):
     hashtags = generate_hashtags(full_text)
     hashtag_string = " ".join(hashtags[:2])  # Limit to 2 hashtags
     
-    # Shorten title to prioritize summary (~20 chars max)
-    display_title = title if len(title) <= 20 else title[:17] + "..."
+    # Shorten title to prioritize summary (~15 chars max)
+    display_title = title if len(title) <= 15 else title[:12] + "..."
     
     # Calculate available space for summary
     base_parts = f"🌍 {display_title}\n\nSource: {url}\n{hashtag_string}"
@@ -256,7 +257,7 @@ def create_tweet(article):
         # Guarantee 5 lines minimum
         lines = [s for s in re.split(r'[.!?]+', summary) if s.strip()]
         if len(lines) < 5:
-            short_text = full_text[:int(len(full_text)*0.3)]  # Use 30% of text
+            short_text = full_text[:int(len(full_text)*0.2)]  # Use 20% of text
             summary = generate_summary(short_text)
             temp_summary = ""
             temp_lines = 0
