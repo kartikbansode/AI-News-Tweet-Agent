@@ -143,15 +143,15 @@ def create_tweet(article):
     hashtag_string = " ".join(hashtags[:4])  # Limit to 4 hashtags
     
     # Construct tweet with line breaks
-    tweet = f"{text}\nread more {url}\n{hashtag_string}"
+    tweet = f"{text}\nRead more {url}\n{hashtag_string}"
     
     # Final safety check and trim if over 280 chars
     if len(tweet) > 280:
-        text = text[:100] + "..."
-        tweet = f"{text}\nread more {url}\n{hashtag_string}"
+        text = text[:100] + "...."
+        tweet = f"{text}\nRead more {url}\n{hashtag_string}"
         if len(tweet) > 280:
             hashtag_string = " ".join(hashtags[:3])  # Reduce to 3 hashtags
-            tweet = f"{text}\nread more {url}\n{hashtag_string}"
+            tweet = f"{text}\nRead more {url}\n{hashtag_string}"
     
     print(f"📝 Generated tweet ({len(tweet)} chars):\n{'-' * 50}\n{tweet}\n{'-' * 50}")
     return tweet
