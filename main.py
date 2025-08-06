@@ -33,7 +33,7 @@ def load_posted_urls():
             if not content:
                 print("📂 posted_articles.json is empty, initializing with []")
                 return []
-            return json.loads(content)
+            return [urllib.parse.unquote(url) for url in json.loads(content)]  # Decode URLs
     except (json.JSONDecodeError, FileNotFoundError) as e:
         print(f"📂 Error loading posted_articles.json: {str(e)}. Initializing with []")
         with open("posted_articles.json", "w") as f:
@@ -124,7 +124,7 @@ def generate_summary(text):
     summary = ""
     sentence_count = 0
     for sentence in sentences:
-        if sentence_count < 7 and len(summary + sentence + ". ") <= 800:  # Increased limit
+        if sentence_count < 7 and len(summary + sentence + ". ") <= 900:  # Increased limit
             summary += sentence + ". "
             sentence_count += 1
         if sentence_count >= 7:
@@ -136,7 +136,7 @@ def generate_summary(text):
         remaining_sentences = re.split(r'[.!?]+', remaining_text)
         remaining_sentences = [s.strip() for s in remaining_sentences if s.strip() and len(s.strip()) > 10]
         for sentence in remaining_sentences:
-            if sentence_count < 7 and len(summary + sentence + ". ") <= 800:
+            if sentence_count < 7 and len(summary + sentence + ". ") <= 900:
                 summary += sentence + ". "
                 sentence_count += 1
             if sentence_count >= 7:
@@ -148,7 +148,7 @@ def generate_summary(text):
         fallback_sentences = re.split(r'[.!?]+', fallback_text)
         fallback_sentences = [s.strip() for s in fallback_sentences if s.strip()]
         for sentence in fallback_sentences:
-            if sentence_count < 7 and len(summary + sentence + ". ") <= 800:
+            if sentence_count < 7 and len(summary + sentence + ". ") <= 900:
                 summary += sentence + ". "
                 sentence_count += 1
             if sentence_count >= 7:
@@ -175,7 +175,7 @@ def generate_summary(text):
     
     # Ensure minimum 60 words
     if word_count < 60 and len(full_text) > len(summary):
-        summary += " " + full_text[len(summary):len(summary)+600]
+        summary += " " + full_text[len(summary):len(summary)+700]
         words = summary.split()
         if len(words) > 100:
             temp_summary = ""
@@ -230,8 +230,8 @@ def create_tweet(article):
     hashtags = generate_hashtags(full_text)
     hashtag_string = " ".join(hashtags[:2])  # Limit to 2 hashtags
     
-    # Shorten title to prioritize summary (~25 chars max)
-    display_title = title if len(title) <= 25 else title[:22] + "..."
+    # Shorten title to prioritize summary (~20 chars max)
+    display_title = title if len(title) <= 20 else title[:17] + "..."
     
     # Calculate available space for summary
     base_parts = f"🌍 {display_title}\n\nSource: {url}\n{hashtag_string}"
@@ -256,7 +256,7 @@ def create_tweet(article):
         # Guarantee 5 lines minimum
         lines = [s for s in re.split(r'[.!?]+', summary) if s.strip()]
         if len(lines) < 5:
-            short_text = full_text[:int(len(full_text)*0.4)]  # Use 40% of text
+            short_text = full_text[:int(len(full_text)*0.3)]  # Use 30% of text
             summary = generate_summary(short_text)
             temp_summary = ""
             temp_lines = 0
