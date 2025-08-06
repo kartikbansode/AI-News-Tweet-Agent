@@ -33,7 +33,7 @@ def load_posted_urls():
             if not content:
                 print("📂 posted_articles.json is empty, initializing with []")
                 return []
-            return [urllib.parse.unquote(url.encode().decode('unicode_escape')) for url in json.loads(content)]  # Decode URLs fully
+            return [urllib.parse.unquote(url.encode().decode('unicode_escape')) for url in json.loads(content)]
     except (json.JSONDecodeError, FileNotFoundError) as e:
         print(f"📂 Error loading posted_articles.json: {str(e)}. Initializing with []")
         with open("posted_articles.json", "w", encoding='utf-8') as f:
@@ -43,10 +43,10 @@ def load_posted_urls():
 def save_posted_url(url):
     """Save a new article URL to the list."""
     posted_urls = load_posted_urls()
-    decoded_url = urllib.parse.unquote(url.encode().decode('unicode_escape'))  # Decode URL fully
+    decoded_url = urllib.parse.unquote(url.encode().decode('unicode_escape'))
     posted_urls.append(decoded_url)
     with open("posted_articles.json", "w", encoding='utf-8') as f:
-        json.dump(posted_urls[-100:], f)  # Limit to last 100 URLs
+        json.dump(posted_urls[-100:], f)
 
 def fetch_news():
     """Fetch latest global news from NewsAPI, ensuring variety."""
@@ -115,185 +115,43 @@ def create_mock_article():
     ]
     return random.choice(mock_articles)
 
-def generate_summary(text):
-    """Generate a 5-7 line summary (60-100 words), ensuring completeness."""
-    full_text = text.strip() or "Breaking news update from our sources."
-    sentences = re.split(r'[.!?]+', full_text)
-    sentences = [s.strip() for s in sentences if s.strip() and len(s.strip()) > 10]
-    
-    # Build summary with 5-7 sentences
-    summary = ""
-    sentence_count = 0
-    for sentence in sentences:
-        if sentence_count < 7 and len(summary + sentence + ". ") <= 1000:  # Increased limit
-            summary += sentence + ". "
-            sentence_count += 1
-        if sentence_count >= 7:
-            break
-    
-    # Add more from remaining text if needed
-    if sentence_count < 5 and len(full_text) > len(summary):
-        remaining_text = full_text[len(summary):]
-        remaining_sentences = re.split(r'[.!?]+', remaining_text)
-        remaining_sentences = [s.strip() for s in remaining_sentences if s.strip() and len(s.strip()) > 10]
-        for sentence in remaining_sentences:
-            if sentence_count < 7 and len(summary + sentence + ". ") <= 1000:
-                summary += sentence + ". "
-                sentence_count += 1
-            if sentence_count >= 7:
-                break
-    
-    # Use fallback text if still too short
-    if sentence_count < 5:
-        fallback_text = "This news highlights critical developments. Authorities are responding actively. Ongoing updates are being tracked. Further details are anticipated. Stay tuned for more. The situation is evolving rapidly. Public awareness is increasing."
-        fallback_sentences = re.split(r'[.!?]+', fallback_text)
-        fallback_sentences = [s.strip() for s in fallback_sentences if s.strip()]
-        for sentence in fallback_sentences:
-            if sentence_count < 7 and len(summary + sentence + ". ") <= 1000:
-                summary += sentence + ". "
-                sentence_count += 1
-            if sentence_count >= 7:
-                break
-    
-    summary = summary.strip()
-    words = summary.split()
-    word_count = len(words)
-    
-    # Trim to 100 words at sentence boundaries
-    if word_count > 100:
-        temp_summary = ""
-        temp_count = 0
-        for sentence in re.split(r'[.!?]+', summary):
-            sentence = sentence.strip()
-            if sentence and temp_count < 100:
-                temp_words = sentence.split()
-                if temp_count + len(temp_words) <= 100:
-                    temp_summary += sentence + ". "
-                    temp_count += len(temp_words)
-                else:
-                    break
-        summary = temp_summary.strip()
-    
-    # Ensure minimum 60 words
-    if word_count < 60 and len(full_text) > len(summary):
-        summary += " " + full_text[len(summary):len(summary)+800]
-        words = summary.split()
-        if len(words) > 100:
-            temp_summary = ""
-            temp_count = 0
-            for sentence in re.split(r'[.!?]+', summary):
-                sentence = sentence.strip()
-                if sentence and temp_count < 100:
-                    temp_words = sentence.split()
-                    if temp_count + len(temp_words) <= 100:
-                        temp_summary += sentence + ". "
-                        temp_count += len(temp_words)
-                    else:
-                        break
-            summary = temp_summary.strip()
-    
-    # Ensure 5-7 lines
-    lines = [s for s in re.split(r'[.!?]+', summary) if s.strip()]
-    line_count = len(lines)
-    if line_count < 5:
-        summary += " More updates are pending. The story continues to develop."
-        lines = [s for s in re.split(r'[.!?]+', summary) if s.strip()]
-        line_count = len(lines)
-    elif line_count > 7:
-        summary = ". ".join(lines[:7]) + "."
-    
-    print(f"📝 Summary ({len(summary)} chars, {word_count} words, {line_count} lines): {summary}")
-    return summary.strip()
-
 def generate_hashtags(text):
-    """Generate relevant hashtags from text."""
+    """Generate 3-4 relevant hashtags from text."""
     words = text.lower().split()
     stop_words = {'the', 'and', 'that', 'this', 'with', 'from', 'they', 'have', 'been', 'said', 'will', 'would', 'could', 'should', 'news', 'more', 'than', 'when', 'where', 'what', 'which', 'their'}
     keywords = [word.strip(".,!?()[]{}\"\'") for word in words if len(word) > 4 and word.isalpha() and word not in stop_words]
     hashtags = [f"#{word.capitalize()}" for word in list(dict.fromkeys(keywords))[:1]]  # One content hashtag
-    trending = random.choice([
-        ["#BreakingNews"],
-        ["#GlobalNews"],
-        ["#Headlines"]
-    ])
+    trending = random.sample([
+        "#BreakingNews", "#GlobalNews", "#Headlines", "#TechUpdate", "#SpaceNews"
+    ], 3)  # Pick 3 trending hashtags
     return hashtags + trending
 
 def create_tweet(article):
-    """Create a properly structured tweet from the article."""
+    """Create a single-line tweet with read more link, hashtags, and mentions."""
     title = article.get('title', 'Breaking News')
-    description = article.get('description', '')
-    content = article.get('content', '')
+    content = article.get('content', '').strip()
     url = urllib.parse.unquote(article.get('url', 'https://example.com').encode().decode('unicode_escape'))
-    full_text = f"{title} {description} {content}".strip()
+    full_text = f"{title} {content}".strip()
     
-    # Generate summary and hashtags
-    summary = generate_summary(full_text)
+    # Generate single-line text (up to 120 chars)
+    text = f"{title} {content[:50]}".strip() if content else title
+    if len(text) > 120:
+        text = text[:117] + "..."
+    
+    # Generate hashtags (3-4)
     hashtags = generate_hashtags(full_text)
-    hashtag_string = " ".join(hashtags[:2])  # Limit to 2 hashtags
+    hashtag_string = " ".join(hashtags[:4])  # Limit to 4 hashtags
     
-    # Shorten title to prioritize summary (~15 chars max)
-    display_title = title if len(title) <= 15 else title[:12] + "..."
+    # Construct tweet with mentions
+    tweet = f"{text} read more {url} {hashtag_string} @verixanews @verixa"
     
-    # Calculate available space for summary
-    base_parts = f"🌍 {display_title}\n\nSource: {url}\n{hashtag_string}"
-    base_length = len(base_parts) + 4  # Account for newlines
-    max_summary_len = 280 - base_length
-    
-    # Ensure summary fits, preserving 5-7 lines
-    if len(summary) > max_summary_len:
-        temp_summary = ""
-        temp_lines = 0
-        for sentence in re.split(r'[.!?]+', summary):
-            sentence = sentence.strip()
-            if sentence and len(temp_summary + sentence + ". ") <= max_summary_len:
-                temp_summary += sentence + ". "
-                temp_lines += 1
-            if temp_lines >= 5:  # Ensure minimum 5 lines
-                break
-        summary = temp_summary.strip()
-        if not summary.endswith(('.', '!', '?')):
-            summary += "..."
-        
-        # Guarantee 5 lines minimum
-        lines = [s for s in re.split(r'[.!?]+', summary) if s.strip()]
-        if len(lines) < 5:
-            short_text = full_text[:int(len(full_text)*0.2)]  # Use 20% of text
-            summary = generate_summary(short_text)
-            temp_summary = ""
-            temp_lines = 0
-            for sentence in re.split(r'[.!?]+', summary):
-                sentence = sentence.strip()
-                if sentence and len(temp_summary + sentence + ". ") <= max_summary_len:
-                    temp_summary += sentence + ". "
-                    temp_lines += 1
-                if temp_lines >= 5:
-                    break
-            summary = temp_summary.strip()
-            if not summary.endswith(('.', '!', '?')):
-                summary += "..."
-    
-    tweet = f"🌍 {display_title}\n\n{summary}\nSource: {url}\n{hashtag_string}"
-    
-    # Final safety check
+    # Final safety check and trim if over 280 chars
     if len(tweet) > 280:
-        hashtags = hashtags[:1]  # Reduce to 1 hashtag
-        hashtag_string = " ".join(hashtags)
-        base_parts = f"🌍 {display_title}\n\nSource: {url}\n{hashtag_string}"
-        base_length = len(base_parts) + 4
-        max_summary_len = 280 - base_length
-        temp_summary = ""
-        temp_lines = 0
-        for sentence in re.split(r'[.!?]+', summary):
-            sentence = sentence.strip()
-            if sentence and len(temp_summary + sentence + ". ") <= max_summary_len:
-                temp_summary += sentence + ". "
-                temp_lines += 1
-            if temp_lines >= 5:
-                break
-        summary = temp_summary.strip()
-        if not summary.endswith(('.', '!', '?')):
-            summary += "..."
-        tweet = f"🌍 {display_title}\n\n{summary}\nSource: {url}\n{hashtag_string}"
+        text = text[:100] + "..."  # Shorten text
+        tweet = f"{text} read more {url} {hashtag_string} @verixanews @verixa"
+        if len(tweet) > 280:
+            hashtag_string = " ".join(hashtags[:3])  # Reduce to 3 hashtags
+            tweet = f"{text} read more {url} {hashtag_string} @verixanews @verixa"
     
     print(f"📝 Generated tweet ({len(tweet)} chars):\n{'-' * 50}\n{tweet}\n{'-' * 50}")
     return tweet
