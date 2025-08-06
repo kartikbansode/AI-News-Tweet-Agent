@@ -120,7 +120,7 @@ def generate_summary(text):
     sentences = [s.strip() for s in sentences if s.strip() and len(s.strip()) > 15]
     summary = ""
     for sentence in sentences[:6]:
-        if len(summary + sentence + ". ") <= 300:
+        if len(summary + sentence + ". ") <= 400:  # Increased to allow more content
             summary += sentence + ". "
         else:
             break
@@ -129,9 +129,10 @@ def generate_summary(text):
     if len(words) > 80:
         summary = " ".join(words[:80]) + "..."
     elif len(words) < 50 and len(full_text) > len(summary):
-        summary += " " + full_text[len(summary):len(summary)+100]
+        summary += " " + full_text[len(summary):len(summary)+150]  # Increased to ensure enough content
     if not summary.endswith(('.', '!', '?')):
         summary += "..."
+    print(f"📝 Summary ({len(summary)} chars): {summary}")
     return summary.strip()
 
 def generate_hashtags(text):
@@ -159,13 +160,16 @@ def create_tweet(article):
     display_title = title if len(title) <= 80 else title[:77] + "..."
     summary = generate_summary(full_text)
     hashtags = generate_hashtags(full_text)
-    hashtag_string = " ".join(hashtags)
+    hashtag_string = " ".join(hashtags[:4])  # Limit to 4 hashtags
     
-    tweet = f"{display_title}\n\n{summary}\n\n🌐 Source: {url}\n{hashtag_string}"
-    if len(tweet) > 280:
-        max_summary_len = 280 - len(f"🌍 {display_title}\n\n🌐 Source: {url}\n{hashtag_string}") - 3
-        summary = summary[:max_summary_len] + "..."
-        tweet = f"{display_title}\n\n{summary}\n\n🌐 Source: {url}\n{hashtag_string}"
+    # Calculate available space for summary
+    base_parts = f"🌍 {display_title}\n\nRead more: {url}\n{hashtag_string}"
+    base_length = len(base_parts) + 4  # Account for newlines
+    max_summary_len = 280 - base_length
+    if len(summary) > max_summary_len:
+        summary = summary[:max_summary_len-3] + "..."
+    
+    tweet = f"🌍 {display_title}\n\n{summary}\n\nRead more: {url}\n{hashtag_string}"
     
     print(f"📝 Generated tweet ({len(tweet)} chars):\n{'-' * 50}\n{tweet}\n{'-' * 50}")
     return tweet
