@@ -37,7 +37,7 @@ def fetch_news():
 
 def summarize_text(text):
     """Summarize text to fit within 280 characters using Hugging Face."""
-    summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+    summarizer = pipeline("summarization", model="t5-small")
     max_length = 50  # Adjust to keep tweet under 280 chars with URL
     summary = summarizer(text, max_length=max_length, min_length=20, do_sample=False)
     return summary[0]["summary_text"]
