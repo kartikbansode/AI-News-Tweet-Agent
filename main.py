@@ -134,7 +134,7 @@ def create_tweet(article):
     full_text = f"{title} {content}".strip()
     
     # Generate single-line text (up to 120 chars)
-    text = f"{title} {content[:50]}".strip() if content else title
+    text = f"📰 {title} {content[:50]}".strip() if content else title
     if len(text) > 120:
         text = text[:117] + "..."
     
