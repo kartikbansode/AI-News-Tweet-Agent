@@ -2,140 +2,26 @@ import os
 import requests
 import json
 import random
+import re
 from datetime import datetime
+from twitter_api import TwitterClient  # Use original Twitter API wrapper
 
 # Environment variables (set in GitHub Secrets)
 NEWS_API_KEY = os.environ.get("NEWS_API_KEY")
-TWITTER_BEARER_TOKEN = os.environ.get("TWITTER_BEARER_TOKEN")  # For free tier
 TWITTER_API_KEY = os.environ.get("TWITTER_API_KEY")
 TWITTER_API_SECRET = os.environ.get("TWITTER_API_SECRET")
 TWITTER_ACCESS_TOKEN = os.environ.get("TWITTER_ACCESS_TOKEN")
 TWITTER_ACCESS_TOKEN_SECRET = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET")
 
+# Initialize Twitter client
+twitter = TwitterClient(
+    TWITTER_API_KEY, TWITTER_API_SECRET,
+    TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET
+)
+
 # List of countries and sources for varied news
 COUNTRIES = ["us", "gb", "ca", "au", "in", "fr", "de", "jp", "cn", "br"]
 SOURCES = ["bbc-news", "al-jazeera-english", "reuters", "cnn", "the-guardian-uk"]
-
-# Different post structure templates - optimized for character limits
-POST_TEMPLATES = [
-    {
-        "name": "headline_first",
-        "emoji": "📰",
-        "structure": "{emoji} {title}\n\n{summary}\n\n{hashtags}\n\n🔗 {url}"
-    },
-    {
-        "name": "breaking_style", 
-        "emoji": "🚨",
-        "structure": "{emoji} {title}\n\n{summary}\n\n{hashtags}\n\n📖 {url}"
-    },
-    {
-        "name": "world_update",
-        "emoji": "🌍", 
-        "structure": "{emoji} {title}\n\n{summary}\n\n{hashtags}\n\n👉 {url}"
-    },
-    {
-        "name": "news_flash",
-        "emoji": "⚡",
-        "structure": "{emoji} {title}\n\n{summary}\n\n{hashtags}\n\n📰 {url}"
-    },
-    {
-        "name": "daily_briefing",
-        "emoji": "📊",
-        "structure": "{emoji} {title}\n\n{summary}\n\n{hashtags}\n\n🌐 {url}"
-    },
-    {
-        "name": "story_spotlight",
-        "emoji": "🔦",
-        "structure": "{emoji} {title}\n\n{summary}\n\n{hashtags}\n\n📱 {url}"
-    }
-]
-
-class SimpleTwitterClient:
-    """Simple Twitter client that handles free tier limitations"""
-    
-    def __init__(self, bearer_token=None, api_key=None, api_secret=None, access_token=None, access_token_secret=None):
-        self.bearer_token = bearer_token
-        self.api_key = api_key
-        self.api_secret = api_secret
-        self.access_token = access_token
-        self.access_token_secret = access_token_secret
-        self.base_url = "https://api.twitter.com/2"
-    
-    def post_tweet(self, text):
-        """Post a tweet with proper error handling for free tier"""
-        try:
-            # Method 1: Try with Bearer Token (Read-only for free tier)
-            if self.bearer_token:
-                headers = {
-                    "Authorization": f"Bearer {self.bearer_token}",
-                    "Content-Type": "application/json"
-                }
-                
-                payload = {
-                    "text": text
-                }
-                
-                response = requests.post(
-                    f"{self.base_url}/tweets",
-                    headers=headers,
-                    json=payload
-                )
-                
-                if response.status_code == 201:
-                    print("✅ Tweet posted successfully!")
-                    return response.json()
-                elif response.status_code == 403:
-                    print("❌ Free tier doesn't allow posting. Saving tweet locally instead...")
-                    self.save_tweet_locally(text)
-                    return {"status": "saved_locally"}
-                else:
-                    print(f"⚠️ Twitter API responded with {response.status_code}: {response.text}")
-                    self.save_tweet_locally(text)
-                    return {"status": "saved_locally", "error": response.text}
-            
-            # Fallback: Save locally if no valid credentials
-            else:
-                print("❌ No valid Twitter credentials found. Saving tweet locally...")
-                self.save_tweet_locally(text)
-                return {"status": "saved_locally"}
-                
-        except Exception as e:
-            print(f"❌ Error posting tweet: {str(e)}")
-            print("💾 Saving tweet locally instead...")
-            self.save_tweet_locally(text)
-            return {"status": "error", "message": str(e)}
-    
-    def save_tweet_locally(self, text):
-        """Save tweet to local file when posting fails"""
-        try:
-            tweet_data = {
-                "timestamp": datetime.utcnow().isoformat(),
-                "text": text,
-                "length": len(text),
-                "status": "pending_post"
-            }
-            
-            # Load existing tweets
-            try:
-                with open("pending_tweets.json", "r") as f:
-                    tweets = json.load(f)
-            except FileNotFoundError:
-                tweets = []
-            
-            tweets.append(tweet_data)
-            
-            # Keep only last 50 tweets
-            tweets = tweets[-50:]
-            
-            # Save updated tweets
-            with open("pending_tweets.json", "w") as f:
-                json.dump(tweets, f, indent=2)
-            
-            print(f"💾 Tweet saved to pending_tweets.json")
-            print(f"📝 Tweet preview: {text[:100]}...")
-            
-        except Exception as e:
-            print(f"❌ Error saving tweet locally: {str(e)}")
 
 def load_posted_urls():
     """Load previously posted article URLs."""
@@ -158,7 +44,7 @@ def save_posted_url(url):
     posted_urls = load_posted_urls()
     posted_urls.append(url)
     with open("posted_articles.json", "w") as f:
-        json.dump(posted_urls[-100:], f)
+        json.dump(posted_urls[-100:], f)  # Limit to last 100 URLs
 
 def fetch_news():
     """Fetch latest global news from NewsAPI, ensuring variety."""
@@ -173,329 +59,132 @@ def fetch_news():
         f"https://newsapi.org/v2/everything?q=news&language=en&sortBy=publishedAt&apiKey={NEWS_API_KEY}",
         *[f"https://newsapi.org/v2/top-headlines?sources={source}&apiKey={NEWS_API_KEY}" for source in SOURCES]
     ]
-    
     for url in queries:
         try:
             response = requests.get(url, timeout=10)
             print(f"🌐 NewsAPI request: {url.replace(NEWS_API_KEY, '***')}")
-            
             if response.status_code != 200:
                 print(f"❌ NewsAPI error: {response.status_code} {response.text}")
                 continue
-            
             data = response.json()
             articles = data.get("articles", [])
-            
             if not articles:
-                print(f"📰 No articles found for this query")
+                print(f"📰 No articles found for {url}")
                 continue
-            
-            # Filter out already posted articles and ensure quality
-            available_articles = []
-            for article in articles:
-                if (article.get("url") and 
-                    article["url"] not in posted_urls and
-                    article.get("title") and
-                    len(article.get("title", "")) > 10):
-                    available_articles.append(article)
-            
+            available_articles = [
+                a for a in articles
+                if a.get("url") and a["url"] not in posted_urls and a.get("title") and len(a.get("title", "")) > 10
+            ]
             if not available_articles:
-                print(f"📰 No new quality articles available for this query")
+                print(f"📰 No new quality articles available for {url}")
                 continue
-            
             article = random.choice(available_articles)
             print(f"✅ Selected article: {article['title']}")
-            
-            # Clean and return article data - handle None values safely
-            title = article.get("title") or "Untitled News"
-            description = article.get("description") or ""
-            content = article.get("content") or ""
-            url = article.get("url") or ""
-            
             return {
-                "title": title.strip() if title else "Untitled News",
-                "description": description.strip() if description else "",
-                "content": content.strip() if content else "",
-                "url": url.strip() if url else "",
+                "title": article.get("title", "Untitled News").strip(),
+                "description": article.get("description", "").strip(),
+                "content": article.get("content", "").strip(),
+                "url": article.get("url", "").strip(),
                 "published_at": article.get("publishedAt", datetime.utcnow().isoformat())
             }
-            
         except Exception as e:
-            print(f"❌ Error fetching news from query: {str(e)}")
+            print(f"❌ Error fetching news from {url}: {str(e)}")
             continue
-    
-    # Fallback to mock article
     print("📰 All queries failed, using mock article")
     return create_mock_article()
 
 def create_mock_article():
-    """Create a mock article when API fails"""
+    """Create a mock article when API fails."""
     mock_articles = [
         {
             "title": "Global Tech Innovation Reaches New Heights",
-            "description": "Technology companies worldwide are pushing boundaries with artificial intelligence and sustainable solutions.",
-            "content": "Major technology firms are investing billions in AI research and green technology. The focus on sustainable innovation is driving unprecedented growth in the sector. Companies are developing solutions that address climate change while advancing digital transformation. This trend is expected to continue throughout the year with significant breakthroughs anticipated.",
+            "description": "Technology companies worldwide are pushing boundaries with AI and sustainable solutions.",
+            "content": "Major tech firms are investing billions in AI and green technology, driving growth in the sector.",
             "url": "https://example.com/tech-news",
             "published_at": datetime.utcnow().isoformat()
         },
         {
             "title": "International Climate Summit Yields Promising Results",
-            "description": "World leaders announce new commitments to reduce carbon emissions and protect biodiversity.",
-            "content": "The latest international climate summit concluded with significant agreements on carbon reduction targets. Countries have committed to accelerating their transition to renewable energy sources. New funding mechanisms for developing nations were established to support green infrastructure projects. Environmental groups have praised the collaborative approach taken by participating nations.",
+            "description": "World leaders announce new commitments to reduce carbon emissions.",
+            "content": "The latest climate summit concluded with agreements on carbon reduction and renewable energy.",
             "url": "https://example.com/climate-news",
             "published_at": datetime.utcnow().isoformat()
         }
     ]
     return random.choice(mock_articles)
 
-def generate_enhanced_summary(text):
-    """Generate a comprehensive summary for better understanding."""
-    full_text = text.strip()
-    
-    if not full_text:
-        return "Stay informed with the latest news and updates from around the world."
-    
-    # Clean and split text more effectively
-    # Remove extra whitespace and normalize
-    full_text = " ".join(full_text.split())
-    
-    # If text is short, return as is
-    if len(full_text) <= 100:
-        return full_text
-    
-    # Split into sentences more carefully
-    import re
+def generate_summary(text):
+    """Generate a 4-6 line summary (50-80 words)."""
+    full_text = text.strip() or "Breaking news update from our sources."
     sentences = re.split(r'[.!?]+', full_text)
     sentences = [s.strip() for s in sentences if s.strip() and len(s.strip()) > 15]
-    
-    # Build summary with first few sentences
     summary = ""
     for sentence in sentences[:6]:
-        if len(summary + sentence + ". ") <= 300:  # Leave room for other content
-            summary += sentence.strip() + ". "
+        if len(summary + sentence + ". ") <= 300:
+            summary += sentence + ". "
         else:
             break
-    
-    # If no sentences found, take first 200 chars
-    if not summary:
-        summary = full_text[:200] + "..."
-    
-    # Clean up summary
     summary = summary.strip()
+    words = summary.split()
+    if len(words) > 80:
+        summary = " ".join(words[:80]) + "..."
+    elif len(words) < 50 and len(full_text) > len(summary):
+        summary += " " + full_text[len(summary):len(summary)+100]
     if not summary.endswith(('.', '!', '?')):
         summary += "..."
-    
-    return summary
+    return summary.strip()
 
-def generate_contextual_hashtags(text, article_title):
-    """Generate relevant hashtags based on content."""
-    all_text = f"{article_title} {text}".lower()
-    words = all_text.split()
-    
-    # Extract keywords
-    keywords = []
+def generate_hashtags(text):
+    """Generate relevant hashtags from text."""
+    words = text.lower().split()
     stop_words = {'the', 'and', 'that', 'this', 'with', 'from', 'they', 'have', 'been', 'said', 'will', 'would', 'could', 'should', 'news', 'more', 'than', 'when', 'where', 'what', 'which', 'their'}
-    
-    for word in words:
-        clean_word = word.strip(".,!?()[]{}\"'").lower()
-        if (len(clean_word) > 3 and 
-            clean_word.isalpha() and 
-            clean_word not in stop_words):
-            keywords.append(clean_word)
-    
-    # Get unique keywords
-    unique_keywords = list(dict.fromkeys(keywords))[:3]
-    content_hashtags = [f"#{word.capitalize()}" for word in unique_keywords]
-    
-    # Trending hashtags
-    trending_pools = [
+    keywords = [word.strip(".,!?()[]{}\"\'") for word in words if len(word) > 4 and word.isalpha() and word not in stop_words]
+    hashtags = [f"#{word.capitalize()}" for word in list(dict.fromkeys(keywords))[:3]]
+    trending = random.choice([
         ["#BreakingNews", "#WorldNews"],
         ["#GlobalNews", "#NewsAlert"],
-        ["#Headlines", "#NewsFlash"],
-        ["#TodayNews", "#WorldUpdate"],
-        ["#NewsNow", "#CurrentEvents"]
-    ]
-    
-    trending = random.choice(trending_pools)
-    all_hashtags = content_hashtags + trending
-    return all_hashtags[:4]  # Limit to 4 hashtags
+        ["#Headlines", "#NewsFlash"]
+    ])
+    return hashtags + trending
 
 def create_tweet(article):
-    """Create a tweet with variable structure and enhanced content."""
-    # Safely extract data with None handling
+    """Create a properly structured tweet from the article."""
     title = article.get('title', 'Breaking News')
     description = article.get('description', '')
     content = article.get('content', '')
     url = article.get('url', 'https://example.com')
+    full_text = f"{title} {description} {content}".strip()
     
-    # Handle None values
-    title = title or 'Breaking News'
-    description = description or ''
-    content = content or ''
-    url = url or 'https://example.com'
-    
-    # Create comprehensive text for summary - build safely
-    full_text_parts = []
-    if title and len(title.strip()) > 0:
-        full_text_parts.append(title.strip())
-    if description and len(description.strip()) > 0:
-        full_text_parts.append(description.strip())
-    if content and len(content.strip()) > 0:
-        full_text_parts.append(content.strip())
-    
-    full_text = " ".join(full_text_parts) if full_text_parts else "Breaking news update from our sources."
-    
-    print(f"📄 Full text length: {len(full_text)} characters")
-    print(f"📄 Text preview: {full_text[:150]}...")
-    
-    # Smart title shortening for long titles
-    display_title = title
-    if len(title) > 80:  # If title is too long
-        display_title = title[:77] + "..."
-        print(f"✂️ Shortened title: {display_title}")
-    
-    # Generate summary and hashtags
-    summary = generate_enhanced_summary(full_text)
-    hashtags = generate_contextual_hashtags(full_text, title)
+    # Shorten title if needed
+    display_title = title if len(title) <= 80 else title[:77] + "..."
+    summary = generate_summary(full_text)
+    hashtags = generate_hashtags(full_text)
     hashtag_string = " ".join(hashtags)
     
-    print(f"📝 Summary: {summary}")
-    print(f"🏷️ Hashtags: {hashtag_string}")
-    
-    # Select random template
-    template = random.choice(POST_TEMPLATES)
-    print(f"🎨 Using template: {template['name']}")
-    
-    # Create initial tweet with shortened title
-    try:
-        tweet = template['structure'].format(
-            emoji=template['emoji'],
-            title=display_title,
-            summary=summary,
-            hashtags=hashtag_string,
-            url=url
-        )
-    except KeyError as e:
-        print(f"❌ Template formatting error: {e}")
-        # Fallback to simple format
-        tweet = f"📰 {display_title}\n\n{summary}\n\n{hashtag_string}\n\n🔗 {url}"
-    
-    print(f"📏 Initial tweet length: {len(tweet)}")
-    
-    # Smart trimming if still too long
-    if len(tweet) > 270:
-        print("✂️ Tweet still too long, applying smart trimming...")
-        
-        # Strategy 1: Further shorten title if needed
-        if len(display_title) > 60:
-            display_title = title[:57] + "..."
-        
-        # Strategy 2: Limit hashtags
-        if len(hashtags) > 3:
-            hashtags = hashtags[:3]
-            hashtag_string = " ".join(hashtags)
-        
-        # Strategy 3: Calculate available space for summary
-        base_parts = [
-            template['emoji'],
-            display_title,
-            hashtag_string,
-            url
-        ]
-        
-        # Estimate space used by template structure (emojis, labels, newlines)
-        structure_overhead = 50  # Rough estimate for template formatting
-        base_content_length = sum(len(str(part)) for part in base_parts) + structure_overhead
-        available_for_summary = 270 - base_content_length
-        
-        print(f"📏 Available space for summary: {available_for_summary}")
-        
-        if available_for_summary > 30:  # Ensure minimum summary length
-            # Trim summary to fit
-            words = summary.split()
-            trimmed_summary = ""
-            for word in words:
-                test_length = len(trimmed_summary + word + " ")
-                if test_length <= available_for_summary - 3:  # -3 for "..."
-                    trimmed_summary += word + " "
-                else:
-                    break
-            
-            summary = (trimmed_summary.strip() + "...") if trimmed_summary else "Breaking news update..."
-        else:
-            # Very tight space - minimal summary
-            summary = "News update..."
-        
-        # Recreate tweet with optimized content
-        try:
-            tweet = template['structure'].format(
-                emoji=template['emoji'],
-                title=display_title,
-                summary=summary,
-                hashtags=hashtag_string,
-                url=url
-            )
-        except Exception as e:
-            print(f"❌ Template error during trimming: {e}")
-            # Ultimate fallback - simple clean format
-            tweet = f"📰 {display_title}\n\n{summary}\n\n{hashtag_string}\n\n{url}"
-    
-    # Final safety check
+    tweet = f"{display_title}\n\n{summary}\n\nRead more: {url}\n{hashtag_string}"
     if len(tweet) > 280:
-        print("⚠️ Final trim needed...")
-        tweet = tweet[:277] + "..."
+        max_summary_len = 280 - len(f"🌍 {display_title}\n\nRead more: {url}\n{hashtag_string}") - 3
+        summary = summary[:max_summary_len] + "..."
+        tweet = f"{display_title}\n\n{summary}\n\nRead more: {url}\n{hashtag_string}"
     
+    print(f"📝 Generated tweet ({len(tweet)} chars):\n{'-' * 50}\n{tweet}\n{'-' * 50}")
     return tweet
 
 def main():
     try:
         print("🤖 Starting AI News Agent...")
-        
-        # Initialize Twitter client
-        twitter = SimpleTwitterClient(
-            bearer_token=TWITTER_BEARER_TOKEN,
-            api_key=TWITTER_API_KEY,
-            api_secret=TWITTER_API_SECRET,
-            access_token=TWITTER_ACCESS_TOKEN,
-            access_token_secret=TWITTER_ACCESS_TOKEN_SECRET
-        )
-        
-        # Fetch news
         print("📰 Fetching news...")
         article = fetch_news()
-        
-        # Create tweet
         print("✍️ Creating tweet...")
         tweet = create_tweet(article)
-        
-        print(f"\n📝 Generated tweet ({len(tweet)} chars):")
-        print("-" * 50)
-        print(tweet)
-        print("-" * 50)
-        
-        # Post tweet
-        print("\n📤 Posting tweet...")
-        result = twitter.post_tweet(tweet)
-        
-        # Save article URL
+        print("📤 Posting tweet...")
+        twitter.post_tweet(tweet)
+        print("✅ Tweet posted successfully!")
         if article.get("url"):
             save_posted_url(article["url"])
             print(f"💾 Saved article URL to history")
-        
-        print(f"✅ Process completed successfully!")
-        
-        # Show result summary
-        if result.get("status") == "saved_locally":
-            print("\n📋 SUMMARY:")
-            print("- Tweet was generated successfully")
-            print("- Saved to pending_tweets.json (Twitter API limitations)")
-            print("- Article URL added to history")
-            print("- Ready for manual posting when API access is available")
-        
     except Exception as e:
         print(f"❌ Error in main process: {str(e)}")
-        print("🔍 This might be due to API rate limits or permissions")
-        print("💡 Check your API keys and try again later")
         raise
 
 if __name__ == "__main__":
