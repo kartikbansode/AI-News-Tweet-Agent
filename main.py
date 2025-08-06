@@ -190,21 +190,28 @@ def fetch_news():
                 print(f"📰 No articles found for this query")
                 continue
             
-            # Filter out already posted articles
-            available_articles = [a for a in articles if a.get("url") and a["url"] not in posted_urls]
+            # Filter out already posted articles and ensure quality
+            available_articles = []
+            for article in articles:
+                if (article.get("url") and 
+                    article["url"] not in posted_urls and
+                    article.get("title") and
+                    len(article.get("title", "")) > 10):
+                    available_articles.append(article)
             
             if not available_articles:
-                print(f"📰 No new articles available for this query")
+                print(f"📰 No new quality articles available for this query")
                 continue
             
             article = random.choice(available_articles)
             print(f"✅ Selected article: {article['title']}")
             
+            # Clean and return article data
             return {
-                "title": article.get("title", "Untitled News"),
-                "description": article.get("description", ""),
-                "content": article.get("content", ""),
-                "url": article.get("url", ""),
+                "title": article.get("title", "Untitled News").strip(),
+                "description": article.get("description", "").strip(),
+                "content": article.get("content", "").strip(),
+                "url": article.get("url", "").strip(),
                 "published_at": article.get("publishedAt", datetime.utcnow().isoformat())
             }
             
@@ -243,33 +250,37 @@ def generate_enhanced_summary(text):
     if not full_text:
         return "Stay informed with the latest news and updates from around the world."
     
-    # Split into sentences and clean them
-    sentences = [s.strip() for s in full_text.split(". ") if s.strip() and len(s.strip()) > 10]
+    # Clean and split text more effectively
+    # Remove extra whitespace and normalize
+    full_text = " ".join(full_text.split())
     
-    # Take more sentences for better context
-    summary_sentences = sentences[:8]  # Reduced from 12 to fit better
+    # If text is short, return as is
+    if len(full_text) <= 100:
+        return full_text
     
-    # Join sentences
-    summary = ". ".join(summary_sentences)
-    if summary and not summary.endswith('.'):
-        summary += "."
+    # Split into sentences more carefully
+    import re
+    sentences = re.split(r'[.!?]+', full_text)
+    sentences = [s.strip() for s in sentences if s.strip() and len(s.strip()) > 15]
     
-    # Ensure reasonable length
-    if len(summary) > 400:  # Reduced from 600 to fit Twitter better
-        summary = summary[:400] + "..."
+    # Build summary with first few sentences
+    summary = ""
+    for sentence in sentences[:6]:
+        if len(summary + sentence + ". ") <= 300:  # Leave room for other content
+            summary += sentence.strip() + ". "
+        else:
+            break
     
-    # Ensure minimum content
-    words = summary.split()
-    if len(words) < 30 and len(full_text) > len(summary):
-        remaining_text = full_text[len(summary):len(summary)+150]
-        if remaining_text:
-            summary = summary + " " + remaining_text.strip()
-            if len(summary) > 400:
-                summary = summary[:400] + "..."
-    elif len(words) > 80:
-        summary = " ".join(words[:80]) + "..."
+    # If no sentences found, take first 200 chars
+    if not summary:
+        summary = full_text[:200] + "..."
     
-    return summary.strip()
+    # Clean up summary
+    summary = summary.strip()
+    if not summary.endswith(('.', '!', '?')):
+        summary += "..."
+    
+    return summary
 
 def generate_contextual_hashtags(text, article_title):
     """Generate relevant hashtags based on content."""
@@ -306,50 +317,96 @@ def generate_contextual_hashtags(text, article_title):
 
 def create_tweet(article):
     """Create a tweet with variable structure and enhanced content."""
-    full_text = f"{article['title']} {article['description']} {article['content']}".strip()
+    # Combine all available text more effectively
+    title = article.get('title', 'Breaking News')
+    description = article.get('description', '')
+    content = article.get('content', '')
+    url = article.get('url', 'https://example.com')
     
+    # Create comprehensive text for summary
+    full_text_parts = [title]
+    if description:
+        full_text_parts.append(description)
+    if content:
+        full_text_parts.append(content)
+    
+    full_text = " ".join(full_text_parts).strip()
+    
+    print(f"📄 Full text length: {len(full_text)} characters")
+    print(f"📄 Text preview: {full_text[:150]}...")
+    
+    # Generate summary and hashtags
     summary = generate_enhanced_summary(full_text)
-    hashtags = generate_contextual_hashtags(full_text, article['title'])
+    hashtags = generate_contextual_hashtags(full_text, title)
     hashtag_string = " ".join(hashtags)
+    
+    print(f"📝 Summary: {summary}")
+    print(f"🏷️ Hashtags: {hashtag_string}")
     
     # Select random template
     template = random.choice(POST_TEMPLATES)
     print(f"🎨 Using template: {template['name']}")
     
-    # Format tweet
-    tweet = template['structure'].format(
-        emoji=template['emoji'],
-        title=article['title'],
-        summary=summary,
-        hashtags=hashtag_string,
-        url=article['url']
-    )
-    
-    # Ensure it fits Twitter's limit
-    if len(tweet) > 270:  # Leave some buffer
-        # Calculate space for summary
-        template_without_summary = template['structure'].replace('{summary}', '')
-        other_content = template_without_summary.format(
+    # Create initial tweet
+    try:
+        tweet = template['structure'].format(
             emoji=template['emoji'],
-            title=article['title'],
+            title=title,
+            summary=summary,
             hashtags=hashtag_string,
-            url=article['url']
+            url=url
         )
+    except KeyError as e:
+        print(f"❌ Template formatting error: {e}")
+        # Fallback to simple format
+        tweet = f"📰 {title}\n\n{summary}\n\n{hashtag_string}\n\n🔗 {url}"
+    
+    print(f"📏 Initial tweet length: {len(tweet)}")
+    
+    # Trim if too long
+    if len(tweet) > 270:
+        print("✂️ Tweet too long, trimming...")
         
-        max_summary_length = 270 - len(other_content) - 5
+        # Calculate available space for summary
+        base_template = f"{template['emoji']} {title}\n\n{{SUMMARY}}\n\n{hashtag_string}\n\n🔗 {url}"
+        available_for_summary = 270 - (len(base_template) - len('{SUMMARY}'))
         
-        if max_summary_length > 30:
-            summary = summary[:max_summary_length].rsplit(' ', 1)[0] + "..."
+        print(f"📏 Available space for summary: {available_for_summary}")
+        
+        if available_for_summary > 50:  # Ensure minimum summary length
+            # Trim summary to fit
+            words = summary.split()
+            trimmed_summary = ""
+            for word in words:
+                if len(trimmed_summary + word + " ") <= available_for_summary - 3:  # -3 for "..."
+                    trimmed_summary += word + " "
+                else:
+                    break
+            
+            if trimmed_summary:
+                summary = trimmed_summary.strip() + "..."
+            else:
+                summary = summary[:available_for_summary-3] + "..."
+        else:
+            # Very tight space - use minimal format
+            summary = "Breaking news update..."
+        
+        # Recreate tweet with trimmed summary
+        try:
             tweet = template['structure'].format(
                 emoji=template['emoji'],
-                title=article['title'],
+                title=title,
                 summary=summary,
                 hashtags=hashtag_string,
-                url=article['url']
+                url=url
             )
-        else:
-            # Simplified format
-            tweet = f"{template['emoji']} {article['title'][:100]}...\n\n{hashtag_string}\n\n{article['url']}"
+        except:
+            # Ultimate fallback
+            tweet = f"📰 {title[:100]}\n\n{summary[:80]}\n\n{hashtag_string}\n\n{url}"
+    
+    # Final length check
+    if len(tweet) > 280:
+        tweet = tweet[:277] + "..."
     
     return tweet
 
