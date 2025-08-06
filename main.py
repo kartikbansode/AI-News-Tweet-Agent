@@ -116,18 +116,18 @@ def create_mock_article():
     return random.choice(mock_articles)
 
 def generate_hashtags(text):
-    """Generate 3-4 relevant hashtags from text."""
+    """Generate 3-4 relevant hashtags from text, including #verixanews and #verixa."""
     words = text.lower().split()
     stop_words = {'the', 'and', 'that', 'this', 'with', 'from', 'they', 'have', 'been', 'said', 'will', 'would', 'could', 'should', 'news', 'more', 'than', 'when', 'where', 'what', 'which', 'their'}
     keywords = [word.strip(".,!?()[]{}\"\'") for word in words if len(word) > 4 and word.isalpha() and word not in stop_words]
     hashtags = [f"#{word.capitalize()}" for word in list(dict.fromkeys(keywords))[:1]]  # One content hashtag
     trending = random.sample([
         "#BreakingNews", "#GlobalNews", "#Headlines", "#TechUpdate", "#SpaceNews"
-    ], 3)  # Pick 3 trending hashtags
-    return hashtags + trending
+    ], 2)  # Pick 2 trending hashtags
+    return hashtags + trending + ["#verixanews", "#verixa"]  # Always include #verixanews and #verixa
 
 def create_tweet(article):
-    """Create a single-line tweet with read more link, hashtags, and mentions."""
+    """Create a line-wise tweet with text, read more link, and hashtags."""
     title = article.get('title', 'Breaking News')
     content = article.get('content', '').strip()
     url = urllib.parse.unquote(article.get('url', 'https://example.com').encode().decode('unicode_escape'))
@@ -138,20 +138,20 @@ def create_tweet(article):
     if len(text) > 120:
         text = text[:117] + "..."
     
-    # Generate hashtags (3-4)
+    # Generate hashtags (3-4, including #verixanews and #verixa)
     hashtags = generate_hashtags(full_text)
     hashtag_string = " ".join(hashtags[:4])  # Limit to 4 hashtags
     
-    # Construct tweet with mentions
-    tweet = f"{text} read more {url} {hashtag_string} @verixanews @verixa"
+    # Construct tweet with line breaks
+    tweet = f"{text}\nread more {url}\n{hashtag_string}"
     
     # Final safety check and trim if over 280 chars
     if len(tweet) > 280:
-        text = text[:100] + "..."  # Shorten text
-        tweet = f"{text} read more {url} {hashtag_string} @verixanews @verixa"
+        text = text[:100] + "..."
+        tweet = f"{text}\nread more {url}\n{hashtag_string}"
         if len(tweet) > 280:
             hashtag_string = " ".join(hashtags[:3])  # Reduce to 3 hashtags
-            tweet = f"{text} read more {url} {hashtag_string} @verixanews @verixa"
+            tweet = f"{text}\nread more {url}\n{hashtag_string}"
     
     print(f"📝 Generated tweet ({len(tweet)} chars):\n{'-' * 50}\n{tweet}\n{'-' * 50}")
     return tweet
