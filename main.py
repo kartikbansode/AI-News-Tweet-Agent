@@ -18,7 +18,7 @@ twitter = TwitterClient(
     TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET
 )
 
-# List of countries for varied news
+# List of countries and sources for varied news
 COUNTRIES = ["us", "gb", "ca", "au", "in", "fr", "de", "jp", "cn", "br"]
 SOURCES = ["bbc-news", "al-jazeera-english", "reuters", "cnn", "the-guardian-uk"]
 
@@ -26,8 +26,16 @@ def load_posted_urls():
     """Load previously posted article URLs."""
     try:
         with open("posted_articles.json", "r") as f:
+            content = f.read().strip()
+            print(f"Content of posted_articles.json: {content}")  # Log file content
+            if not content:
+                print("posted_articles.json is empty, initializing with []")
+                return []
             return json.load(f)
-    except FileNotFoundError:
+    except (json.JSONDecodeError, FileNotFoundError) as e:
+        print(f"Error loading posted_articles.json: {str(e)}. Initializing with []")
+        with open("posted_articles.json", "w") as f:
+            json.dump([], f)  # Initialize with empty array
         return []
 
 def save_posted_url(url):
@@ -75,6 +83,7 @@ def fetch_news():
             print(f"Error fetching news from {url}: {str(e)}")
             continue
     # Fallback default tweet
+    print("All queries failed, using fallback tweet")
     return {
         "title": "Latest News Update",
         "description": "Stay tuned for the latest global news stories.",
