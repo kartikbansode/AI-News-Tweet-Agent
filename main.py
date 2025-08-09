@@ -129,7 +129,7 @@ def generate_hashtags(text):
 def summarize_text(text, max_sentences=5):
     """Summarize text to a set number of sentences without cutting mid-sentence."""
     sentences = re.split(r'(?<=[.!?]) +', text.strip())
-    return " ".join(sentences[:max_sentences]
+    return " ".join(sentences[:max_sentences])
 
 def trim_to_twitter_limit(text, url, hashtags):
     """Trim text so that tweet stays under 280 chars, cutting at sentence boundaries."""
@@ -144,7 +144,6 @@ def trim_to_twitter_limit(text, url, hashtags):
         else:
             break
     return trimmed.strip()
-
 
 def create_tweet(article):
     """Create a summarized tweet ensuring no mid-sentence cuts."""
@@ -168,6 +167,8 @@ def create_tweet(article):
 
     print(f"📝 Generated tweet ({len(tweet)} chars):\n{'-' * 50}\n{tweet}\n{'-' * 50}")
     return tweet
+
+
 
 def main():
     try:
