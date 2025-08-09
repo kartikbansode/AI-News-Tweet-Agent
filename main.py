@@ -127,37 +127,47 @@ def generate_hashtags(text):
     return hashtags + trending + ["#verixanews", "#verixa"]  # Always include #verixanews and #verixa
 
 def summarize_text(text, max_sentences=5):
-    """Summarize text to a maximum number of sentences."""
+    """Summarize text to a set number of sentences without cutting mid-sentence."""
     sentences = re.split(r'(?<=[.!?]) +', text.strip())
-    return " ".join(sentences[:max_sentences])
+    return " ".join(sentences[:max_sentences]
+
+def trim_to_twitter_limit(text, url, hashtags):
+    """Trim text so that tweet stays under 280 chars, cutting at sentence boundaries."""
+    hashtag_str = " ".join(hashtags)
+    max_len = 280 - (len(url) + len(hashtag_str) + 18)  # 18 = len("Read full article - ") + spaces/newlines
+
+    sentences = re.split(r'(?<=[.!?]) +', text)
+    trimmed = ""
+    for s in sentences:
+        if len(trimmed) + len(s) + 1 <= max_len:
+            trimmed += (s + " ")
+        else:
+            break
+    return trimmed.strip()
+
 
 def create_tweet(article):
-    """Create a summarized tweet with link and hashtags."""
+    """Create a summarized tweet ensuring no mid-sentence cuts."""
     title = article.get('title', 'Breaking News')
     description = article.get('description', '').strip()
     content = article.get('content', '').strip()
     url = urllib.parse.unquote(article.get('url', 'https://example.com').encode().decode('unicode_escape'))
 
-    # Merge title + description + content for summarization
+    # Merge text for summarization
     raw_text = f"{title}. {description} {content}".strip()
-    summary = summarize_text(raw_text, max_sentences=5)
+    summary = summarize_text(raw_text, max_sentences=6)
 
     # Generate hashtags
-    hashtags = generate_hashtags(raw_text)
-    hashtag_string = " ".join(hashtags[:4])
+    hashtags = generate_hashtags(raw_text)[:4]
+
+    # Trim summary so tweet fits and ends at a sentence boundary
+    clean_summary = trim_to_twitter_limit(summary, url, hashtags)
 
     # Build tweet
-    tweet = f"{summary}\nRead more {url}\n{hashtag_string}"
-
-    # Ensure within Twitter's 280-char limit
-    if len(tweet) > 280:
-        allowed_summary_len = 280 - (len(url) + len(hashtag_string) + 15)  # extra chars for formatting
-        summary = summary[:allowed_summary_len].rstrip() + "..."
-        tweet = f"{summary}\nRead more {url}\n{hashtag_string}"
+    tweet = f"{clean_summary}\nRead full article - {url}\n{' '.join(hashtags)}"
 
     print(f"📝 Generated tweet ({len(tweet)} chars):\n{'-' * 50}\n{tweet}\n{'-' * 50}")
     return tweet
-
 
 def main():
     try:
