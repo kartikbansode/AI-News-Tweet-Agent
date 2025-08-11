@@ -40,24 +40,6 @@ def load_posted_urls():
             json.dump([], f)
         return []
 
-def send_to_make_webhook(tweet_text, article_url):
-    make_webhook_url = os.environ.get("MAKE_WEBHOOK_URL")
-    if not make_webhook_url:
-        print("⚠️ MAKE_WEBHOOK_URL not set. Skipping Instagram automation.")
-        return
-    payload = {
-        "tweet_text": tweet_text,
-        "article_url": article_url
-    }
-    try:
-        r = requests.post(make_webhook_url, json=payload, timeout=10)
-        r.raise_for_status()
-        print("📡 Sent tweet to Make.com webhook successfully.")
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Failed to send to Make.com webhook: {e}")
-
-
-
 def save_posted_url(url):
     """Save a new article URL to the list."""
     posted_urls = load_posted_urls()
@@ -198,8 +180,6 @@ def main():
         print("📤 Posting tweet...")
         twitter.post_tweet(tweet)
         print("✅ Tweet posted successfully!")
-        send_to_make_webhook(tweet, article.get("url"))
-
         if article.get("url"):
             save_posted_url(article["url"])
             print(f"💾 Saved article URL to history")
