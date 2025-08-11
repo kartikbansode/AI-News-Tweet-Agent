@@ -2,14 +2,14 @@ name: Post News to Twitter
 
 on:
   schedule:
-    - cron: '0 */4 * * *'  # Runs every 4 hours (0:00, 4:00, 8:00, 12:00, 16:00, 20:00 UTC)
-  workflow_dispatch:  # Allows manual triggering
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
 
 jobs:
   post-news:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # Grant write access for git push
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,9 +33,9 @@ jobs:
           TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
           TWITTER_ACCESS_TOKEN: ${{ secrets.TWITTER_ACCESS_TOKEN }}
           TWITTER_ACCESS_TOKEN_SECRET: ${{ secrets.TWITTER_ACCESS_TOKEN_SECRET }}
+          INSTA_USERNAME: ${{ secrets.INSTA_USERNAME }}
+          INSTA_PASSWORD: ${{ secrets.INSTA_PASSWORD }}
         run: python main.py
-
-
 
       - name: Commit posted_articles.json
         run: |
