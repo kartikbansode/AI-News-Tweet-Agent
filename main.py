@@ -1,3 +1,4 @@
+# main.py
 import os
 import requests
 import json
@@ -7,6 +8,13 @@ from datetime import datetime
 from twitter_api import TwitterClient
 import urllib.parse
 
+# New imports
+import textwrap
+import base64
+from instagrapi import Client
+from PIL import Image, ImageDraw, ImageFont
+import time
+
 # Environment variables (set in GitHub Secrets)
 NEWS_API_KEY = os.environ.get("NEWS_API_KEY")
 TWITTER_API_KEY = os.environ.get("TWITTER_API_KEY")
@@ -14,18 +22,24 @@ TWITTER_API_SECRET = os.environ.get("TWITTER_API_SECRET")
 TWITTER_ACCESS_TOKEN = os.environ.get("TWITTER_ACCESS_TOKEN")
 TWITTER_ACCESS_TOKEN_SECRET = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET")
 
-# Initialize Twitter client
+# Instagram credentials / session
+INSTA_USERNAME = os.environ.get("INSTA_USERNAME")
+INSTA_PASSWORD = os.environ.get("INSTA_PASSWORD")
+# Optional: base64-encoded session JSON (set in Secrets) so CI doesn't need interactive login
+INSTA_SESSION_BASE64 = os.environ.get("INSTA_SESSION_BASE64")
+INSTA_SESSION_FILE = os.environ.get("INSTA_SESSION_FILE", "insta_session.json")
+
+# Initialize Twitter client (unchanged)
 twitter = TwitterClient(
     TWITTER_API_KEY, TWITTER_API_SECRET,
     TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET
 )
 
-# List of countries and sources for varied news
+# --- your existing constants / functions (unchanged) ---
 COUNTRIES = ["us", "gb", "ca", "au", "in", "fr", "de", "jp", "cn", "br"]
 SOURCES = ["bbc-news", "al-jazeera-english", "reuters", "cnn", "the-guardian-uk"]
 
 def load_posted_urls():
-    """Load previously posted article URLs."""
     try:
         with open("posted_articles.json", "r", encoding='utf-8') as f:
             content = f.read().strip()
@@ -41,7 +55,6 @@ def load_posted_urls():
         return []
 
 def save_posted_url(url):
-    """Save a new article URL to the list."""
     posted_urls = load_posted_urls()
     decoded_url = urllib.parse.unquote(url.encode().decode('unicode_escape'))
     posted_urls.append(decoded_url)
@@ -49,11 +62,9 @@ def save_posted_url(url):
         json.dump(posted_urls[-100:], f)
 
 def fetch_news():
-    """Fetch latest global news from NewsAPI, ensuring variety."""
     if not NEWS_API_KEY:
         print("❌ NEWS_API_KEY not found. Using mock data...")
         return create_mock_article()
-    
     posted_urls = load_posted_urls()
     queries = [
         f"https://newsapi.org/v2/top-headlines?category=general&language=en&apiKey={NEWS_API_KEY}",
@@ -96,7 +107,6 @@ def fetch_news():
     return create_mock_article()
 
 def create_mock_article():
-    """Create a mock article when API fails."""
     mock_articles = [
         {
             "title": "Tech Innovation Surges Globally",
@@ -116,26 +126,22 @@ def create_mock_article():
     return random.choice(mock_articles)
 
 def generate_hashtags(text):
-    """Generate 3-4 relevant hashtags from text, including #verixanews and #verixa."""
     words = text.lower().split()
     stop_words = {'the', 'and', 'that', 'this', 'with', 'from', 'they', 'have', 'been', 'said', 'will', 'would', 'could', 'should', 'news', 'more', 'than', 'when', 'where', 'what', 'which', 'their'}
     keywords = [word.strip(".,!?()[]{}\"\'") for word in words if len(word) > 4 and word.isalpha() and word not in stop_words]
-    hashtags = [f"#{word.capitalize()}" for word in list(dict.fromkeys(keywords))[:1]]  # One content hashtag
+    hashtags = [f"#{word.capitalize()}" for word in list(dict.fromkeys(keywords))[:1]]
     trending = random.sample([
         "#BreakingNews", "#GlobalNews", "#Headlines", "#TechUpdate", "#SpaceNews"
-    ], 2)  # Pick 2 trending hashtags
-    return hashtags + trending + ["#verixanews", "#verixa"]  # Always include #verixanews and #verixa
+    ], 2)
+    return hashtags + trending + ["#verixanews", "#verixa"]
 
 def summarize_text(text, max_sentences=5):
-    """Summarize text to a set number of sentences without cutting mid-sentence."""
     sentences = re.split(r'(?<=[.!?]) +', text.strip())
     return " ".join(sentences[:max_sentences])
 
 def trim_to_twitter_limit(text, url, hashtags):
-    """Trim text so that tweet stays under 280 chars, cutting at sentence boundaries."""
     hashtag_str = " ".join(hashtags)
-    max_len = 280 - (len(url) + len(hashtag_str) + 18)  # 18 = len("Read full article - ") + spaces/newlines
-
+    max_len = 280 - (len(url) + len(hashtag_str) + 18)
     sentences = re.split(r'(?<=[.!?]) +', text)
     trimmed = ""
     for s in sentences:
@@ -146,29 +152,148 @@ def trim_to_twitter_limit(text, url, hashtags):
     return trimmed.strip()
 
 def create_tweet(article):
-    """Create a summarized tweet ensuring no mid-sentence cuts."""
     title = article.get('title', 'Breaking News')
     description = article.get('description', '').strip()
     content = article.get('content', '').strip()
     url = urllib.parse.unquote(article.get('url', 'https://example.com').encode().decode('unicode_escape'))
-
-    # Merge text for summarization
     raw_text = f"{title}. {description} {content}".strip()
     summary = summarize_text(raw_text, max_sentences=6)
-
-    # Generate hashtags
     hashtags = generate_hashtags(raw_text)[:4]
-
-    # Trim summary so tweet fits and ends at a sentence boundary
     clean_summary = trim_to_twitter_limit(summary, url, hashtags)
-
-    # Build tweet
     tweet = f"{clean_summary}\nRead full article - {url}\n{' '.join(hashtags)}"
-
     print(f"📝 Generated tweet ({len(tweet)} chars):\n{'-' * 50}\n{tweet}\n{'-' * 50}")
     return tweet
 
+# ---------------- New Instagram functions ----------------
 
+def _maybe_write_session_file_from_base64():
+    """If INSTA_SESSION_BASE64 is provided (GitHub Actions secret), decode it to session file."""
+    if INSTA_SESSION_BASE64 and not os.path.exists(INSTA_SESSION_FILE):
+        try:
+            data = base64.b64decode(INSTA_SESSION_BASE64)
+            with open(INSTA_SESSION_FILE, "wb") as f:
+                f.write(data)
+            print(f"🔐 Wrote Instagram session file to {INSTA_SESSION_FILE} from INSTA_SESSION_BASE64")
+        except Exception as e:
+            print("⚠️ Failed to decode INSTA_SESSION_BASE64:", e)
+
+def get_instagram_client():
+    """Return a logged-in instagrapi.Client or None on failure."""
+    if not INSTA_USERNAME or not INSTA_PASSWORD:
+        print("⚠️ INSTA_USERNAME or INSTA_PASSWORD not set; skipping Instagram.")
+        return None
+
+    _maybe_write_session_file_from_base64()
+
+    client = Client()
+    try:
+        # If session file exists, try to load it first
+        if os.path.exists(INSTA_SESSION_FILE):
+            try:
+                client.load_settings(INSTA_SESSION_FILE)
+                # Attempt login (this will reuse session if valid)
+                client.login(INSTA_USERNAME, INSTA_PASSWORD)
+                client.dump_settings(INSTA_SESSION_FILE)
+                print("🔁 Instagram: logged in using saved session/settings.")
+                return client
+            except Exception as e:
+                print("⚠️ Saved IG session failed; will attempt fresh login:", e)
+
+        # Fresh login and dump session
+        client = Client()
+        client.login(INSTA_USERNAME, INSTA_PASSWORD)
+        client.dump_settings(INSTA_SESSION_FILE)
+        print("🔐 Instagram: fresh login succeeded and session saved.")
+        return client
+    except Exception as e:
+        print("❌ Instagram login/initialization failed:", e)
+        return None
+
+def create_news_image(headline, url=None, output_path="news_post.jpg"):
+    """Generate a simple professional news-style image (1080x1080)."""
+    W, H = 1080, 1080
+    bg_color = (18, 18, 18)
+    accent_color = (200, 35, 45)  # red bar
+    text_color = (255, 255, 255)
+    meta_color = (180, 180, 180)
+
+    img = Image.new("RGB", (W, H), bg_color)
+    draw = ImageDraw.Draw(img)
+
+    # Try some common system fonts; fall back to default if none available
+    fonts_to_try = ["DejaVuSans-Bold.ttf", "arialbd.ttf", "Arial.ttf", "LiberationSans-Bold.ttf"]
+    header_font = None
+    title_font = None
+    url_font = None
+    for f in fonts_to_try:
+        try:
+            header_font = ImageFont.truetype(f, 36)
+            title_font = ImageFont.truetype(f, 64)
+            url_font = ImageFont.truetype(f, 28)
+            break
+        except Exception:
+            continue
+    if header_font is None:
+        header_font = ImageFont.load_default()
+        title_font = ImageFont.load_default()
+        url_font = ImageFont.load_default()
+
+    # Top "BREAKING NEWS" bar
+    draw.rectangle([(0, 0), (W, 120)], fill=accent_color)
+    header_text = "BREAKING NEWS"
+    draw.text((30, 34), header_text, font=header_font, fill=(255, 255, 255))
+
+    # Wrap headline text to multiple lines
+    # width param controls wrap; tune if you need fewer/more chars per line
+    wrap_width = 24
+    wrapped = textwrap.wrap(headline, wrap_width)
+    # compute total height
+    line_heights = []
+    max_line_width = 0
+    for line in wrapped:
+        w, h = draw.textsize(line, font=title_font)
+        line_heights.append((w, h))
+        if w > max_line_width:
+            max_line_width = w
+    total_text_height = sum(h for (_, h) in line_heights) + (len(line_heights) - 1) * 8
+
+    # Start drawing headline vertically centered (but a bit lower to leave top bar)
+    y_start = (H - total_text_height) // 2 + 30
+    for i, line in enumerate(wrapped):
+        w, h = line_heights[i]
+        x = (W - w) // 2
+        draw.text((x, y_start), line, font=title_font, fill=text_color)
+        y_start += h + 8
+
+    # Draw URL / source at bottom-left
+    if url:
+        try:
+            domain = re.sub(r"^https?://", "", url).split("/")[0]
+            draw.text((40, H - 60), domain, font=url_font, fill=meta_color)
+        except Exception:
+            draw.text((40, H - 60), url, font=url_font, fill=meta_color)
+
+    # Save image
+    img.save(output_path, quality=85, optimize=True)
+    print(f"🖼 News image created at {output_path}")
+    return output_path
+
+def post_to_instagram(image_path, caption):
+    """Upload image to Instagram and return True on success, False otherwise."""
+    client = get_instagram_client()
+    if client is None:
+        print("⚠️ Instagram client not available; skipping upload.")
+        return False
+    try:
+        # Use photo_upload (instagrapi handles resizing if needed)
+        media = client.photo_upload(image_path, caption)
+        print(f"✅ Posted to Instagram (pk={getattr(media, 'pk', 'unknown')})")
+        return True
+    except Exception as e:
+        print("❌ Instagram upload failed:", e)
+        return False
+
+# ---------------- end Instagram functions ----------------
 
 def main():
     try:
@@ -183,6 +308,22 @@ def main():
         if article.get("url"):
             save_posted_url(article["url"])
             print(f"💾 Saved article URL to history")
+
+        # ---- New: create image + post to Instagram ----
+        try:
+            # headline: prefer article title, otherwise first line of tweet
+            headline = article.get("title") or tweet.split("\n")[0]
+            image_path = create_news_image(headline, article.get("url"))
+            # Use tweet as IG caption (it already includes URL + hashtags)
+            caption = tweet
+            posted = post_to_instagram(image_path, caption)
+            if posted:
+                print("📸 Instagram post successful.")
+            else:
+                print("📸 Instagram post skipped/failed.")
+        except Exception as e:
+            print("❌ Error during Instagram flow:", e)
+
     except Exception as e:
         print(f"❌ Error in main process: {str(e)}")
         raise
