@@ -209,74 +209,41 @@ def get_instagram_client():
         print("❌ Instagram login/initialization failed:", e)
         return None
 
-def create_news_image(headline, url=None, output_path="news_post.jpg"):
-    """Generate a simple professional news-style image (1080x1080)."""
+def create_news_image(headline, url):
+    """Generate a professional news-style image."""
     W, H = 1080, 1080
-    bg_color = (18, 18, 18)
-    accent_color = (200, 35, 45)  # red bar
+    bg_color = (20, 20, 20)
     text_color = (255, 255, 255)
-    meta_color = (180, 180, 180)
+    accent_color = (255, 0, 0)
 
     img = Image.new("RGB", (W, H), bg_color)
     draw = ImageDraw.Draw(img)
 
-    # Try some common system fonts; fall back to default if none available
-    fonts_to_try = ["DejaVuSans-Bold.ttf", "arialbd.ttf", "Arial.ttf", "LiberationSans-Bold.ttf"]
-    header_font = None
-    title_font = None
-    url_font = None
-    for f in fonts_to_try:
-        try:
-            header_font = ImageFont.truetype(f, 36)
-            title_font = ImageFont.truetype(f, 64)
-            url_font = ImageFont.truetype(f, 28)
-            break
-        except Exception:
-            continue
-    if header_font is None:
-        header_font = ImageFont.load_default()
+    try:
+        title_font = ImageFont.truetype("arial.ttf", 60)
+        url_font = ImageFont.truetype("arial.ttf", 30)
+    except:
         title_font = ImageFont.load_default()
         url_font = ImageFont.load_default()
 
-    # Top "BREAKING NEWS" bar
+    # Breaking News Banner
     draw.rectangle([(0, 0), (W, 120)], fill=accent_color)
-    header_text = "BREAKING NEWS"
-    draw.text((30, 34), header_text, font=header_font, fill=(255, 255, 255))
+    draw.text((40, 30), "BREAKING NEWS", font=title_font, fill=text_color)
 
-    # Wrap headline text to multiple lines
-    # width param controls wrap; tune if you need fewer/more chars per line
-    wrap_width = 24
-    wrapped = textwrap.wrap(headline, wrap_width)
-    # compute total height
-    line_heights = []
-    max_line_width = 0
-    for line in wrapped:
-        w, h = draw.textsize(line, font=title_font)
-        line_heights.append((w, h))
-        if w > max_line_width:
-            max_line_width = w
-    total_text_height = sum(h for (_, h) in line_heights) + (len(line_heights) - 1) * 8
+    # Wrap headline
+    wrapped_text = textwrap.fill(headline, width=25)
+    bbox = draw.multiline_textbbox((0, 0), wrapped_text, font=title_font)
+    w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    draw.multiline_text(((W - w) / 2, (H - h) / 2), wrapped_text, font=title_font, fill=text_color, align="center")
 
-    # Start drawing headline vertically centered (but a bit lower to leave top bar)
-    y_start = (H - total_text_height) // 2 + 30
-    for i, line in enumerate(wrapped):
-        w, h = line_heights[i]
-        x = (W - w) // 2
-        draw.text((x, y_start), line, font=title_font, fill=text_color)
-        y_start += h + 8
+    # URL at bottom
+    draw.text((40, H - 50), url, font=url_font, fill=(180, 180, 180))
 
-    # Draw URL / source at bottom-left
-    if url:
-        try:
-            domain = re.sub(r"^https?://", "", url).split("/")[0]
-            draw.text((40, H - 60), domain, font=url_font, fill=meta_color)
-        except Exception:
-            draw.text((40, H - 60), url, font=url_font, fill=meta_color)
+    image_path = "news_post.jpg"
+    img.save(image_path)
+    print(f"🖼 News image created at {image_path}")
+    return image_path
 
-    # Save image
-    img.save(output_path, quality=85, optimize=True)
-    print(f"🖼 News image created at {output_path}")
-    return output_path
 
 def post_to_instagram(image_path, caption):
     """Upload image to Instagram and return True on success, False otherwise."""
