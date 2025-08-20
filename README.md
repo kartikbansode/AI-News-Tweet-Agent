@@ -36,8 +36,8 @@ ai-social-agent/
 
 ### 1. Clone the repo  
 ```bash
-git clone https://github.com/kartikbansode/ai-social-agent.git
-cd ai-social-agent
+git clone https://github.com/kartikbansode/AI-News-Tweet-Agent.git
+cd AI-News-Tweet-Agent
 ````
 
 ### 2. Install dependencies
@@ -73,7 +73,7 @@ python main.py
 * The bot is pre-configured with a workflow file.
 * It will automatically post news every few hours.
 
-* Check Workflow actions here [[AI News Tweet Agent Workflow]](https://github.com/kartikbansode/ai-social-agent/actions)  
+* Check Workflow actions here [[AI News Tweet Agent Workflow]](https://github.com/kartikbansode/AI-News-Tweet-Agent/actions)  
 
 ---
 
