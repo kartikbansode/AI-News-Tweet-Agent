@@ -122,9 +122,9 @@ def generate_hashtags(text):
     keywords = [word.strip(".,!?()[]{}\"\'") for word in words if len(word) > 4 and word.isalpha() and word not in stop_words]
     hashtags = [f"#{word.capitalize()}" for word in list(dict.fromkeys(keywords))[:1]]  # One content hashtag
     trending = random.sample([
-        "#BreakingNews", "#GlobalNews", "#Headlines", "#TechUpdate", "#SpaceNews"
+        "#BreakingNews", "#GlobalNews", "#Headlines", "#TechUpdate", "#News" , "Viral"
     ], 2)  # Pick 2 trending hashtags
-    return hashtags + trending + ["#verixanews", "#verixa"]  # Always include #verixanews and #verixa
+    return hashtags + trending + ["#theverixanews", "#news" , "@theverixanews"]  # Always include #verixanews and #verixa
 
 def summarize_text(text, max_sentences=5):
     """Summarize text to a set number of sentences without cutting mid-sentence."""
