@@ -1,18 +1,20 @@
-# 🤖 Verixa News Agent  
-[![News Bot Workflow](https://github.com/kartikbansode/ai-social-agent/actions/workflows/main.yml/badge.svg)](https://github.com/kartikbansode/ai-social-agent/actions)  
+# AI News Tweet Agent  
 
-An **AI-powered social media bot** that fetches the latest global news, summarizes it into short, professional updates, and posts automatically on **Twitter (X)** and **Instagram**.  
+>**Version:** 1.0
+>
+>**Release Date:** August 20, 2025  
+
+An **AI-powered social media bot** that fetches the latest global news, summarizes it into short, professional updates, and posts automatically on **Twitter (X)**. 
 
 ---
 
-## ✨ Features  
-- 📰 Fetches **real-time news** from [NewsAPI](https://newsapi.org/)  
-- ✍️ Summarizes articles into **5–6 lines** for readability  
-- 🔗 Adds the **original article link** for full context  
-- #️⃣ Auto-generates relevant hashtags (+ branded tags: `#verixanews`, `#verixa`)  
-- 🐦 Posts directly to **Twitter (X)**  
-- 📸 Converts tweets into styled **Instagram posts** using Meta Graph API (coming soon 🚀)  
-- 🔄 Runs every **4–5 hours** automatically via GitHub Actions  
+##  Features  
+-  Fetches **real-time news** from [NewsAPI](https://newsapi.org/)  
+-  Summarizes articles into **5–6 lines** for readability  
+-  Adds the **original article link** for full context  
+-  Auto-generates relevant hashtags
+-  Posts directly to **Twitter (X)**  
+-  Runs every **4–5 hours** automatically via GitHub Actions  
 
 ---
 
@@ -56,11 +58,9 @@ Add your secrets in **GitHub → Repo Settings → Secrets → Actions**
 | `TWITTER_ACCESS_TOKEN`        | Twitter/X access token                       |
 | `TWITTER_ACCESS_TOKEN_SECRET` | Twitter/X access token secret                |
 
-👉 Future update: Meta Instagram Graph API tokens for auto-posting.
-
 ---
 
-## 🚀 Usage
+##  Usage
 
 ### Run locally
 
@@ -73,27 +73,20 @@ python main.py
 * The bot is pre-configured with a workflow file.
 * It will automatically post news every few hours.
 
----
-
-## 📌 Roadmap
-
-* [x] Fetch and post news to Twitter
-* [x] Summarize articles into short, professional updates
-* [ ] Auto-generate **Instagram posts** with headlines in styled templates
-* [ ] Add support for Threads & LinkedIn
-* [ ] Improve hashtag generation with AI
+* Check Workflow actions here [[AI News Tweet Agent Workflow]](https://github.com/kartikbansode/ai-social-agent/actions)  
 
 ---
 
-## 🤝 Contributing
-
-Pull requests are welcome! If you’d like to add new features, feel free to open an issue first.
-
----
 
 ## 📜 License
 
 MIT License © 2025 [Kartik Bansode](https://github.com/kartikbansode)
 
-```
+---
+
+## Contact
+- Email: bansodekartik00@gmail.com
+- Github: https://github.com/kartikbansode
+
+
 
