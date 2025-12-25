@@ -236,7 +236,7 @@ def main():
             logging.info("⚠️ Local duplicate tweet detected. Trying next article.")
             continue
 
-        try:
+                try:
             twitter.post_tweet(tweet)
             logging.info("✅ Tweet posted")
 
@@ -253,11 +253,11 @@ def main():
         except Exception as e:
             msg = str(e).lower()
             if "duplicate" in msg:
-                logging.warning("⚠️ Twitter duplicate error. Trying next article.")
-                continue
+                logging.warning("⚠️ Duplicate tweet rejected by Twitter. Trying next article.")
             else:
-                logging.error(f"❌ Twitter error: {e}")
-                raise
+                logging.warning(f"⚠️ Twitter API blocked or error. Trying next article. Error: {e}")
+            continue
+
 
     logging.warning("⚠️ No suitable article found to post after retries.")
 
