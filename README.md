@@ -1,6 +1,6 @@
 # AI News Tweet Agent  
 
->**Latest Version:** 1.1.0
+>**Version:** 1.1.0
 >
 >**Release Date:** December 25, 2025  
 
@@ -10,12 +10,17 @@ An **AI-powered social media bot** that fetches the latest global news, summariz
 
 ## What’s New (v1.1.0)
 
->Smarter sentence-based summaries (no mid cuts)
-Auto topic tags (Tech, World, Business, etc.)
-Retry system + error logging
-Better duplicate detection (URL + content hash)
-Cleaner tweet format with full article link
-Codebase prepared for Instagram integration
+>Smarter sentence-based summaries (no mid cuts).
+>
+>Auto topic tags (Tech, World, Business, etc.).
+>
+>Retry system + error logging.
+>
+>Better duplicate detection (URL + content hash).
+>
+>Cleaner tweet format with full article link.
+>
+>Codebase prepared for Instagram integration.
 
 ---
 
