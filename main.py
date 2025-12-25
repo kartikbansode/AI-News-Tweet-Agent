@@ -54,6 +54,7 @@ def safe_request(url, retries=3):
             r = requests.get(url, timeout=10)
             if r.status_code == 200:
                 return r
+            logging.warning(f"NewsAPI error {r.status_code}: {r.text}")
         except Exception as e:
             logging.warning(f"Request error: {e}")
         time.sleep(2)
@@ -166,56 +167,57 @@ def fetch_news():
 # Tweet Builder
 # =========================
 def create_tweet(article):
-    base_text = f"{article['title']}. {article['description']} {article['content']}"
-    summary = summarize(base_text, max_sentences=2)
-
-    hashtags = generate_hashtags(base_text)
+    base = f"{article['title']}. {article['description']} {article['content']}"
+    summary = summarize(base, max_sentences=2)
+    hashtags = generate_hashtags(base)
 
     tweet = (
         f"{summary}\n\n"
         f"Read full news - {article['url']}\n\n"
         f"{' '.join(hashtags)}"
     )
-
     return tweet.strip()
 
 # =========================
 # Main
 # =========================
 def main():
+    print("Starting Verixa News Bot...")
     logging.info("Bot started")
+
     tweet_hashes = load_tweet_hashes()
 
-    for _ in range(MAX_TRIES):
+    for attempt in range(MAX_TRIES):
         article = fetch_news()
         if not article:
-            logging.warning("No new article found")
-            return
+            logging.warning("No new article found.")
+            break
 
         tweet = create_tweet(article)
         h = make_hash(tweet)
 
         if h in tweet_hashes:
-            logging.info("Local duplicate tweet, retrying")
+            logging.info("Local duplicate tweet detected, retrying...")
             continue
 
         try:
-            twitter.post_tweet(tweet)
-            logging.info("Tweet posted successfully")
+            result = twitter.post_tweet(tweet)
+            logging.info(f"Tweet posted successfully: {result}")
+            print("Tweet successfully posted.")
 
             save_article({
                 "url": article["url"],
                 "hash": article["hash"],
                 "time": datetime.utcnow().isoformat()
             })
-
             save_tweet_hash(h)
             return
 
         except Exception as e:
             logging.warning(f"Twitter error, retrying: {e}")
 
-    logging.warning("All retries exhausted")
+    logging.error("All retries exhausted. No tweet was posted.")
+    raise Exception("Tweet not posted after retries")
 
 if __name__ == "__main__":
     main()
