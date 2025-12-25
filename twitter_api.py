@@ -14,7 +14,6 @@ class TwitterClient:
         self.url = "https://api.twitter.com/2/tweets"
 
     def post_tweet(self, text, retries=3, timeout=15):
-        """Post a tweet to Twitter/X with retries and safe error handling."""
         payload = {"text": text}
         headers = {
             "Content-Type": "application/json",
@@ -38,7 +37,6 @@ class TwitterClient:
             status = response.status_code
             text_resp = response.text or ""
 
-            # Success
             if status == 201:
                 try:
                     return response.json()
@@ -47,17 +45,14 @@ class TwitterClient:
 
             lower = text_resp.lower()
 
-            # Duplicate tweet
             if status == 403 and "duplicate" in lower:
-                raise Exception("Twitter API error: duplicate content")
+                raise Exception("duplicate content")
 
-            # Rate limit or temporary block (Cloudflare / spam protection)
             if status in (403, 429, 500, 502, 503, 504):
                 if attempt < retries:
                     time.sleep(2 * attempt)
                     continue
 
-            # Try to parse JSON error if possible
             try:
                 err = response.json()
             except json.JSONDecodeError:
@@ -65,4 +60,4 @@ class TwitterClient:
 
             raise Exception(f"Twitter API error: {status} {err}")
 
-        raise Exception("Twitter API error: failed after retries")
+        raise Exception("Twitter API failed after retries")
