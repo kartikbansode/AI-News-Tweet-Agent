@@ -1,6 +1,6 @@
 # AI News Tweet Agent  
 
->**Version:** 1.1.0
+>**Latest Version:** 1.1.0
 >
 >**Release Date:** December 25, 2025  
 
