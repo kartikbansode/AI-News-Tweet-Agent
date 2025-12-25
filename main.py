@@ -42,13 +42,15 @@ twitter = TwitterClient(
 COUNTRIES = ["us", "gb", "ca", "au", "in"]
 SOURCES = ["bbc-news", "al-jazeera-english", "reuters", "cnn", "the-guardian-uk"]
 POSTED_FILE = "posted_articles.json"
-MAX_HISTORY = 300
+TWEET_HASH_FILE = "posted_tweets.json"
+MAX_HISTORY = 400
+MAX_TRIES = 5
 
 # =========================
 # Utilities
 # =========================
 def safe_request(url, retries=3, timeout=10):
-    for i in range(retries):
+    for _ in range(retries):
         try:
             r = requests.get(url, timeout=timeout)
             if r.status_code == 200:
@@ -62,45 +64,55 @@ def safe_request(url, retries=3, timeout=10):
 def make_hash(text):
     return hashlib.md5(text.lower().encode("utf-8")).hexdigest()
 
-def load_posted():
-    """Load posted articles with backward compatibility."""
+# =========================
+# History Handling
+# =========================
+def load_json_file(path):
+    if not os.path.exists(path):
+        return []
     try:
-        if not os.path.exists(POSTED_FILE):
-            return []
-        with open(POSTED_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        fixed = []
-        for item in data:
-            if isinstance(item, dict):
-                fixed.append(item)
-            elif isinstance(item, str):
-                fixed.append({
-                    "url": item,
-                    "hash": make_hash(item),
-                    "time": ""
-                })
-        return fixed
-    except Exception as e:
-        logging.error(f"Error loading posted file: {e}")
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
         return []
 
-def save_posted(entry):
-    data = load_posted()
-    data.append(entry)
-    with open(POSTED_FILE, "w", encoding="utf-8") as f:
+def save_json_file(path, data):
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(data[-MAX_HISTORY:], f, indent=2)
+
+def load_posted_articles():
+    data = load_json_file(POSTED_FILE)
+    fixed = []
+    for item in data:
+        if isinstance(item, dict):
+            fixed.append(item)
+        elif isinstance(item, str):
+            fixed.append({"url": item, "hash": make_hash(item), "time": ""})
+    return fixed
+
+def save_posted_article(entry):
+    data = load_posted_articles()
+    data.append(entry)
+    save_json_file(POSTED_FILE, data)
+
+def load_posted_tweets():
+    return load_json_file(TWEET_HASH_FILE)
+
+def save_posted_tweet(tweet_hash):
+    data = load_posted_tweets()
+    data.append(tweet_hash)
+    save_json_file(TWEET_HASH_FILE, data)
 
 # =========================
 # Topic Detection
 # =========================
 TOPIC_KEYWORDS = {
-    "🧠 Tech": ["ai", "tech", "software", "startup", "robot", "chip", "google", "microsoft"],
-    "🌍 World": ["war", "conflict", "election", "government", "country", "minister"],
-    "💼 Business": ["market", "stock", "economy", "company", "finance", "trade"],
-    "🏥 Health": ["health", "covid", "virus", "disease", "medical", "vaccine"],
-    "🌱 Climate": ["climate", "environment", "carbon", "warming", "pollution", "green"],
-    "⚽ Sports": ["match", "tournament", "league", "goal", "win", "team"]
+    "Tech": ["ai", "tech", "software", "startup", "robot", "chip", "google", "microsoft"],
+    "World": ["war", "conflict", "election", "government", "country", "minister"],
+    "Business": ["market", "stock", "economy", "company", "finance", "trade"],
+    "Health": ["health", "covid", "virus", "disease", "medical", "vaccine"],
+    "Climate": ["climate", "environment", "carbon", "warming", "pollution", "green"],
+    "Sports": ["match", "tournament", "league", "goal", "win", "team"]
 }
 
 def detect_topic(text):
@@ -129,18 +141,20 @@ def generate_hashtags(text):
     return tags + ["#verixanews", "#verixa"]
 
 # =========================
-# Fetch News
+# Fetch News (generator)
 # =========================
-def fetch_news():
-    posted = load_posted()
-    posted_urls = {p.get("url") for p in posted if isinstance(p, dict)}
-    posted_hashes = {p.get("hash") for p in posted if isinstance(p, dict)}
+def fetch_news_generator():
+    posted = load_posted_articles()
+    posted_urls = {p.get("url") for p in posted}
+    posted_hashes = {p.get("hash") for p in posted}
 
     queries = [
         f"https://newsapi.org/v2/top-headlines?language=en&apiKey={NEWS_API_KEY}",
         *[f"https://newsapi.org/v2/top-headlines?country={c}&apiKey={NEWS_API_KEY}" for c in COUNTRIES],
         *[f"https://newsapi.org/v2/top-headlines?sources={s}&apiKey={NEWS_API_KEY}" for s in SOURCES]
     ]
+
+    seen = set()
 
     for q in queries:
         r = safe_request(q)
@@ -152,18 +166,22 @@ def fetch_news():
                 continue
 
             url = urllib.parse.unquote(a["url"])
+            if url in seen or url in posted_urls:
+                continue
+
             full = f"{a.get('title','')} {a.get('description','')} {a.get('content','')}"
             h = make_hash(full)
+            if h in posted_hashes:
+                continue
 
-            if url not in posted_urls and h not in posted_hashes:
-                return {
-                    "title": a.get("title", "").strip(),
-                    "description": (a.get("description") or "").strip(),
-                    "content": (a.get("content") or "").strip(),
-                    "url": url,
-                    "hash": h
-                }
-    return None
+            seen.add(url)
+            yield {
+                "title": a.get("title", "").strip(),
+                "description": (a.get("description") or "").strip(),
+                "content": (a.get("content") or "").strip(),
+                "url": url,
+                "hash": h
+            }
 
 # =========================
 # Tweet Builder
@@ -190,7 +208,10 @@ def create_tweet(article):
     clean = trim_to_limit(summary, article["url"], hashtags)
 
     tweet = f"{topic}\n{clean}\nRead full article - {article['url']}\n{' '.join(hashtags)}"
-    logging.info(f"Tweet ({len(tweet)} chars): {tweet}")
+
+    # Small variation to reduce duplicate detection
+    tweet += random.choice(["", " ", " 🔹", " 📢", " 🗞️"])
+
     return tweet
 
 # =========================
@@ -198,29 +219,47 @@ def create_tweet(article):
 # =========================
 def main():
     logging.info("🤖 Bot started")
-    try:
-        article = fetch_news()
-        if not article:
-            logging.warning("No new articles found.")
-            return
+
+    posted_tweet_hashes = set(load_posted_tweets())
+    tries = 0
+
+    for article in fetch_news_generator():
+        if tries >= MAX_TRIES:
+            break
+        tries += 1
 
         tweet = create_tweet(article)
-        twitter.post_tweet(tweet)
-        logging.info("✅ Tweet posted")
+        tweet_hash = make_hash(tweet)
 
-        save_posted({
-            "url": article["url"],
-            "hash": article["hash"],
-            "time": datetime.utcnow().isoformat()
-        })
+        # Local duplicate check
+        if tweet_hash in posted_tweet_hashes:
+            logging.info("⚠️ Local duplicate tweet detected. Trying next article.")
+            continue
 
-        logging.info("💾 Article saved")
+        try:
+            twitter.post_tweet(tweet)
+            logging.info("✅ Tweet posted")
 
-        # 🔜 Future: Instagram posting hook here
+            save_posted_article({
+                "url": article["url"],
+                "hash": article["hash"],
+                "time": datetime.utcnow().isoformat()
+            })
 
-    except Exception as e:
-        logging.error(f"❌ Error: {e}")
-        raise
+            save_posted_tweet(tweet_hash)
+            logging.info("💾 Saved article & tweet hash")
+            return
+
+        except Exception as e:
+            msg = str(e).lower()
+            if "duplicate" in msg:
+                logging.warning("⚠️ Twitter duplicate error. Trying next article.")
+                continue
+            else:
+                logging.error(f"❌ Twitter error: {e}")
+                raise
+
+    logging.warning("⚠️ No suitable article found to post after retries.")
 
 if __name__ == "__main__":
     main()
