@@ -42,7 +42,7 @@ twitter = TwitterClient(
 COUNTRIES = ["us", "gb", "ca", "au", "in"]
 SOURCES = ["bbc-news", "al-jazeera-english", "reuters", "cnn", "the-guardian-uk"]
 POSTED_FILE = "posted_articles.json"
-MAX_HISTORY = 200
+MAX_HISTORY = 300
 
 # =========================
 # Utilities
@@ -59,13 +59,30 @@ def safe_request(url, retries=3, timeout=10):
         time.sleep(2)
     return None
 
+def make_hash(text):
+    return hashlib.md5(text.lower().encode("utf-8")).hexdigest()
+
 def load_posted():
+    """Load posted articles with backward compatibility."""
     try:
         if not os.path.exists(POSTED_FILE):
             return []
         with open(POSTED_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
+            data = json.load(f)
+
+        fixed = []
+        for item in data:
+            if isinstance(item, dict):
+                fixed.append(item)
+            elif isinstance(item, str):
+                fixed.append({
+                    "url": item,
+                    "hash": make_hash(item),
+                    "time": ""
+                })
+        return fixed
+    except Exception as e:
+        logging.error(f"Error loading posted file: {e}")
         return []
 
 def save_posted(entry):
@@ -73,9 +90,6 @@ def save_posted(entry):
     data.append(entry)
     with open(POSTED_FILE, "w", encoding="utf-8") as f:
         json.dump(data[-MAX_HISTORY:], f, indent=2)
-
-def make_hash(text):
-    return hashlib.md5(text.lower().encode("utf-8")).hexdigest()
 
 # =========================
 # Topic Detection
@@ -119,8 +133,8 @@ def generate_hashtags(text):
 # =========================
 def fetch_news():
     posted = load_posted()
-    posted_urls = {p["url"] for p in posted}
-    posted_hashes = {p["hash"] for p in posted}
+    posted_urls = {p.get("url") for p in posted if isinstance(p, dict)}
+    posted_hashes = {p.get("hash") for p in posted if isinstance(p, dict)}
 
     queries = [
         f"https://newsapi.org/v2/top-headlines?language=en&apiKey={NEWS_API_KEY}",
@@ -136,9 +150,11 @@ def fetch_news():
         for a in data.get("articles", []):
             if not a.get("title") or not a.get("url"):
                 continue
+
             url = urllib.parse.unquote(a["url"])
             full = f"{a.get('title','')} {a.get('description','')} {a.get('content','')}"
             h = make_hash(full)
+
             if url not in posted_urls and h not in posted_hashes:
                 return {
                     "title": a.get("title", "").strip(),
@@ -200,7 +216,7 @@ def main():
 
         logging.info("💾 Article saved")
 
-        # 👉 Future: call post_to_instagram(tweet, article["title"])
+        # 🔜 Future: Instagram posting hook here
 
     except Exception as e:
         logging.error(f"❌ Error: {e}")
