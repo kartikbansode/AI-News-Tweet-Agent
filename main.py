@@ -10,18 +10,12 @@ from datetime import datetime
 from twitter_api import TwitterClient
 import urllib.parse
 
-# =========================
-# Logging
-# =========================
 logging.basicConfig(
     filename="bot.log",
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-# =========================
-# Environment Variables
-# =========================
 NEWS_API_KEY = os.environ.get("NEWS_API_KEY")
 TWITTER_API_KEY = os.environ.get("TWITTER_API_KEY")
 TWITTER_API_SECRET = os.environ.get("TWITTER_API_SECRET")
@@ -35,29 +29,20 @@ twitter = TwitterClient(
     TWITTER_ACCESS_TOKEN_SECRET
 )
 
-# =========================
-# Config
-# =========================
 COUNTRIES = ["us", "gb", "ca", "au", "in"]
 SOURCES = ["bbc-news", "al-jazeera-english", "reuters", "cnn", "the-guardian-uk"]
 POSTED_FILE = "posted_articles.json"
 TWEET_HASH_FILE = "posted_tweets.json"
-MAX_HISTORY = 400
-MAX_TRIES = 5
 
-# =========================
-# Utils
-# =========================
-def safe_request(url, retries=3):
-    for _ in range(retries):
-        try:
-            r = requests.get(url, timeout=10)
-            if r.status_code == 200:
-                return r
-        except Exception as e:
-            logging.warning(f"NewsAPI request error: {e}")
-        time.sleep(2)
-    return None
+MAX_HISTORY = 400
+MAX_ARTICLE_TRIES = 10
+MAX_POST_RETRIES = 3
+
+def safe_request(url):
+    try:
+        return requests.get(url, timeout=10)
+    except:
+        return None
 
 def make_hash(text):
     return hashlib.md5(text.lower().encode()).hexdigest()
@@ -68,16 +53,13 @@ def load_json(path):
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
-    except Exception:
+    except:
         return []
 
 def save_json(path, data):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data[-MAX_HISTORY:], f, indent=2)
 
-# =========================
-# History
-# =========================
 def load_articles():
     data = load_json(POSTED_FILE)
     fixed = []
@@ -88,9 +70,9 @@ def load_articles():
             fixed.append({"url": i, "hash": make_hash(i), "time": ""})
     return fixed
 
-def save_article(article):
+def save_article(entry):
     data = load_articles()
-    data.append(article)
+    data.append(entry)
     save_json(POSTED_FILE, data)
 
 def load_tweet_hashes():
@@ -101,35 +83,23 @@ def save_tweet_hash(h):
     data.append(h)
     save_json(TWEET_HASH_FILE, data)
 
-# =========================
-# Summarize
-# =========================
 def summarize(text, max_sentences=2):
-    sentences = re.split(r'(?<=[.!?]) +', text.strip())
-    return " ".join(sentences[:max_sentences])
+    s = re.split(r'(?<=[.!?]) +', text.strip())
+    return " ".join(s[:max_sentences])
 
-# =========================
-# Hashtags
-# =========================
 def generate_hashtags(text):
     words = re.findall(r'\b[a-zA-Z]{5,}\b', text.lower())
-    stop = {
-        "about","their","there","which","would","could","should",
-        "after","before","where","these","other","first","latest"
-    }
+    stop = {"about","their","there","which","would","could","should","after","before","where","these"}
     keywords = [w for w in words if w not in stop]
-    unique = list(dict.fromkeys(keywords))[:3]
-    tags = [f"#{w.capitalize()}" for w in unique]
+    uniq = list(dict.fromkeys(keywords))[:3]
+    tags = [f"#{w.capitalize()}" for w in uniq]
     tags.append("#theverixanews")
     return tags
 
-# =========================
-# Fetch News
-# =========================
-def fetch_news():
+def fetch_articles():
     posted = load_articles()
-    posted_urls = {p["url"] for p in posted}
-    posted_hashes = {p["hash"] for p in posted}
+    urls = {p["url"] for p in posted}
+    hashes = {p["hash"] for p in posted}
 
     queries = [
         f"https://newsapi.org/v2/top-headlines?language=en&apiKey={NEWS_API_KEY}",
@@ -139,85 +109,78 @@ def fetch_news():
 
     for q in queries:
         r = safe_request(q)
-        if not r:
+        if not r or r.status_code != 200:
             continue
         for a in r.json().get("articles", []):
             if not a.get("title") or not a.get("url"):
                 continue
-
             url = urllib.parse.unquote(a["url"])
             full = f"{a.get('title','')} {a.get('description','')} {a.get('content','')}"
             h = make_hash(full)
+            if url not in urls and h not in hashes:
+                yield {
+                    "title": a["title"].strip(),
+                    "description": (a.get("description") or "").strip(),
+                    "content": (a.get("content") or "").strip(),
+                    "url": url,
+                    "hash": h
+                }
 
-            if url in posted_urls or h in posted_hashes:
-                continue
-
-            return {
-                "title": a["title"].strip(),
-                "description": (a.get("description") or "").strip(),
-                "content": (a.get("content") or "").strip(),
-                "url": url,
-                "hash": h
-            }
-    return None
-
-# =========================
-# Build Tweet
-# =========================
 def create_tweet(article):
     base = f"{article['title']}. {article['description']} {article['content']}"
-    summary = summarize(base, max_sentences=2)
+    summary = summarize(base, 2)
     hashtags = generate_hashtags(base)
 
+    variation = random.choice(["", " Update.", " Breaking.", " Latest report."])
+
     tweet = (
-        f"{summary}\n\n"
+        f"{summary}{variation}\n\n"
         f"Read full news - {article['url']}\n\n"
         f"{' '.join(hashtags)}"
     )
     return tweet.strip()
 
-# =========================
-# Main
-# =========================
 def main():
     print("Starting Verixa News Bot...")
     logging.info("Bot started")
 
     tweet_hashes = load_tweet_hashes()
+    article_count = 0
 
-    for attempt in range(1, MAX_TRIES + 1):
-        article = fetch_news()
-        if not article:
-            logging.warning("No new article found.")
+    for article in fetch_articles():
+        if article_count >= MAX_ARTICLE_TRIES:
             break
+        article_count += 1
 
         tweet = create_tweet(article)
         h = make_hash(tweet)
 
         if h in tweet_hashes:
-            logging.info("Local duplicate tweet detected. Retrying...")
+            logging.info("Local duplicate tweet, skipping")
             continue
 
-        try:
-            result = twitter.post_tweet(tweet)
-            logging.info(f"Tweet posted successfully: {result}")
-            print("Tweet successfully posted.")
+        for post_try in range(1, MAX_POST_RETRIES + 1):
+            try:
+                print("Trying to post tweet...")
+                result = twitter.post_tweet(tweet)
+                print("Tweet posted.")
+                logging.info(f"Tweet posted: {result}")
 
-            save_article({
-                "url": article["url"],
-                "hash": article["hash"],
-                "time": datetime.utcnow().isoformat()
-            })
-            save_tweet_hash(h)
-            return
+                save_article({
+                    "url": article["url"],
+                    "hash": article["hash"],
+                    "time": datetime.utcnow().isoformat()
+                })
+                save_tweet_hash(h)
+                return
 
-        except Exception as e:
-            logging.warning(f"Attempt {attempt} failed: {e}")
-            time.sleep(10)
+            except Exception as e:
+                print(f"Post attempt {post_try} failed: {e}")
+                logging.warning(f"Post attempt {post_try} failed: {e}")
+                time.sleep(15)
 
-    # IMPORTANT: Exit cleanly so workflow shows success
-    logging.error("No tweet posted this run (Twitter blocked or duplicates). Exiting gracefully.")
-    print("No tweet posted this run. Will try again next schedule.")
+    print("No tweet posted this run.")
+    logging.error("No tweet posted this run.")
 
 if __name__ == "__main__":
     main()
