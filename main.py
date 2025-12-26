@@ -37,12 +37,19 @@ TWEET_HASH_FILE = "posted_tweets.json"
 MAX_HISTORY = 400
 MAX_ARTICLE_TRIES = 10
 MAX_POST_RETRIES = 3
+MAX_RUNTIME = 300  # seconds (5 minutes)
 
-def safe_request(url):
-    try:
-        return requests.get(url, timeout=10)
-    except:
-        return None
+# =========================
+# Utils
+# =========================
+def safe_request(url, retries=2):
+    for _ in range(retries):
+        try:
+            return requests.get(url, timeout=10)
+        except Exception as e:
+            logging.warning(f"NewsAPI request error: {e}")
+            time.sleep(2)
+    return None
 
 def make_hash(text):
     return hashlib.md5(text.lower().encode()).hexdigest()
@@ -53,13 +60,16 @@ def load_json(path):
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
-    except:
+    except Exception:
         return []
 
 def save_json(path, data):
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data[-MAX_HISTORY:], f, indent=2)
 
+# =========================
+# History
+# =========================
 def load_articles():
     data = load_json(POSTED_FILE)
     fixed = []
@@ -83,6 +93,9 @@ def save_tweet_hash(h):
     data.append(h)
     save_json(TWEET_HASH_FILE, data)
 
+# =========================
+# Summarize & Hashtags
+# =========================
 def summarize(text, max_sentences=2):
     s = re.split(r'(?<=[.!?]) +', text.strip())
     return " ".join(s[:max_sentences])
@@ -96,6 +109,9 @@ def generate_hashtags(text):
     tags.append("#theverixanews")
     return tags
 
+# =========================
+# Fetch Articles
+# =========================
 def fetch_articles():
     posted = load_articles()
     urls = {p["url"] for p in posted}
@@ -126,11 +142,13 @@ def fetch_articles():
                     "hash": h
                 }
 
+# =========================
+# Tweet Builder
+# =========================
 def create_tweet(article):
     base = f"{article['title']}. {article['description']} {article['content']}"
     summary = summarize(base, 2)
     hashtags = generate_hashtags(base)
-
     variation = random.choice(["", " Update.", " Breaking.", " Latest report."])
 
     tweet = (
@@ -140,14 +158,20 @@ def create_tweet(article):
     )
     return tweet.strip()
 
+# =========================
+# Main
+# =========================
 def main():
     print("Starting Verixa News Bot...")
     logging.info("Bot started")
 
+    start_time = time.time()
     tweet_hashes = load_tweet_hashes()
     article_count = 0
 
     for article in fetch_articles():
+        if time.time() - start_time > MAX_RUNTIME:
+            break
         if article_count >= MAX_ARTICLE_TRIES:
             break
         article_count += 1
@@ -156,10 +180,11 @@ def main():
         h = make_hash(tweet)
 
         if h in tweet_hashes:
-            logging.info("Local duplicate tweet, skipping")
             continue
 
         for post_try in range(1, MAX_POST_RETRIES + 1):
+            if time.time() - start_time > MAX_RUNTIME:
+                break
             try:
                 print("Trying to post tweet...")
                 result = twitter.post_tweet(tweet)
@@ -173,13 +198,12 @@ def main():
                 })
                 save_tweet_hash(h)
                 return
-
             except Exception as e:
                 print(f"Post attempt {post_try} failed: {e}")
                 logging.warning(f"Post attempt {post_try} failed: {e}")
-                time.sleep(15)
+                time.sleep(10)
 
-    print("No tweet posted this run.")
+    print("No tweet posted this run. Exiting.")
     logging.error("No tweet posted this run.")
 
 if __name__ == "__main__":
