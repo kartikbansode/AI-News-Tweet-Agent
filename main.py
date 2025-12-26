@@ -25,20 +25,31 @@ COUNTRIES = ["us", "gb", "ca", "au", "in", "fr", "de", "jp", "cn", "br"]
 SOURCES = ["bbc-news", "al-jazeera-english", "reuters", "cnn", "the-guardian-uk"]
 
 def load_posted_urls():
-    """Load previously posted article URLs."""
+    """Load previously posted article URLs (supports old and new formats)."""
     try:
         with open("posted_articles.json", "r", encoding='utf-8') as f:
             content = f.read().strip()
             print(f"📂 Content of posted_articles.json: {content}")
             if not content:
-                print("📂 posted_articles.json is empty, initializing with []")
                 return []
-            return [urllib.parse.unquote(url.encode().decode('unicode_escape')) for url in json.loads(content)]
+
+            data = json.loads(content)
+            urls = []
+
+            for item in data:
+                if isinstance(item, str):
+                    urls.append(urllib.parse.unquote(item.encode().decode('unicode_escape')))
+                elif isinstance(item, dict) and "url" in item:
+                    urls.append(urllib.parse.unquote(item["url"].encode().decode('unicode_escape')))
+
+            return urls
+
     except (json.JSONDecodeError, FileNotFoundError) as e:
         print(f"📂 Error loading posted_articles.json: {str(e)}. Initializing with []")
         with open("posted_articles.json", "w", encoding='utf-8') as f:
             json.dump([], f)
         return []
+
 
 def save_posted_url(url):
     """Save a new article URL to the list."""
