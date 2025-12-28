@@ -7,6 +7,8 @@ from datetime import datetime
 from twitter_api import TwitterClient
 import urllib.parse
 
+# ---------------- Config ---------------- #
+
 NEWS_API_KEY = os.environ.get("NEWS_API_KEY")
 TWITTER_API_KEY = os.environ.get("TWITTER_API_KEY")
 TWITTER_API_SECRET = os.environ.get("TWITTER_API_SECRET")
@@ -30,11 +32,9 @@ SOURCES = ["bbc-news", "al-jazeera-english", "reuters", "cnn"]
 def init_logs():
     if not os.path.exists(LOG_FILE):
         with open(LOG_FILE, "w", encoding="utf-8") as f:
-            f.write(json.dumps({"stats": {
-                "total": 0,
-                "success": 0,
-                "failed": 0
-            }}) + "\n")
+            f.write(json.dumps({
+                "stats": {"total": 0, "success": 0, "failed": 0}
+            }) + "\n")
 
 def read_stats_and_urls():
     init_logs()
@@ -56,15 +56,33 @@ def read_stats_and_urls():
 def write_stats(stats):
     with open(LOG_FILE, "r", encoding="utf-8") as f:
         lines = f.readlines()
-
     lines[0] = json.dumps({"stats": stats}) + "\n"
-
     with open(LOG_FILE, "w", encoding="utf-8") as f:
         f.writelines(lines)
 
 def append_log(entry):
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry) + "\n")
+
+# ---------------- Error Normalizer ---------------- #
+
+def normalize_error(err: str) -> str:
+    e = err.lower()
+
+    if "cloudflare" in e or "<html" in e:
+        return "Cloudflare Blocked"
+    if "403" in e:
+        return "403 API Forbidden"
+    if "429" in e:
+        return "429 Rate Limited"
+    if "duplicate" in e:
+        return "Duplicate Tweet"
+    if "401" in e or "authentication" in e:
+        return "Auth Error"
+    if "timeout" in e:
+        return "Request Timeout"
+
+    return "Unknown Error"
 
 # ---------------- News ---------------- #
 
@@ -86,8 +104,6 @@ def fetch_news(posted_urls):
                 a = random.choice(fresh)
                 return {
                     "title": a.get("title", "").strip(),
-                    "description": a.get("description", "").strip(),
-                    "content": a.get("content", "").strip(),
                     "url": a.get("url", "").strip()
                 }
         except:
@@ -122,10 +138,9 @@ def generate_hashtags(text):
 def create_tweet(article):
     title = article["title"].strip()
     url = article["url"].strip()
-
     source = extract_source(url)
 
-    # If title already contains a source, don't append again
+    # If title already contains source, don't add again
     if re.search(r"\s-\s.+$", title):
         headline = title.rstrip(".") + "."
     else:
@@ -155,26 +170,6 @@ def create_tweet(article):
 
     print(f"📝 Generated tweet ({len(tweet)} chars):\n{'-'*50}\n{tweet}\n{'-'*50}")
     return tweet
-
-
-def normalize_error(err: str) -> str:
-    e = err.lower()
-
-    if "cloudflare" in e or "<html" in e:
-        return "Cloudflare Blocked"
-    if "403" in e:
-        return "403 API Forbidden"
-    if "429" in e:
-        return "429 Rate Limited"
-    if "duplicate" in e:
-        return "Duplicate Tweet"
-    if "401" in e or "authentication" in e:
-        return "Auth Error"
-    if "timeout" in e:
-        return "Request Timeout"
-
-    return "Unknown Error"
-
 
 # ---------------- Main ---------------- #
 
@@ -211,23 +206,22 @@ def main():
         })
 
     except Exception as e:
-    raw_err = str(e)
-    clean_err = normalize_error(raw_err)
+        raw_err = str(e)
+        clean_err = normalize_error(raw_err)
 
-    print(f"❌ Error posting tweet: {clean_err}")
+        print(f"❌ Error posting tweet: {clean_err}")
 
-    stats["total"] += 1
-    stats["failed"] += 1
-    write_stats(stats)
+        stats["total"] += 1
+        stats["failed"] += 1
+        write_stats(stats)
 
-    append_log({
-        "time": datetime.utcnow().isoformat() + "Z",
-        "status": "failed",
-        "title": title,
-        "url": url,
-        "error": clean_err
-    })
-
+        append_log({
+            "time": datetime.utcnow().isoformat() + "Z",
+            "status": "failed",
+            "title": title,
+            "url": url,
+            "error": clean_err
+        })
 
 if __name__ == "__main__":
     main()
