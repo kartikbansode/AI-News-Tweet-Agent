@@ -139,47 +139,45 @@ def generate_hashtags(text):
             tags.append(w)
 
     main = [f"#{w.capitalize()}" for w in tags[:3]]
-    return main + ["#theverixanews", "#news"]
+    return main + ["#theverixanews", "#news", "viral"]
 
 def extract_source(url):
     try:
         domain = urllib.parse.urlparse(url).netloc.replace("www.", "")
-        name = domain.split(".")[0]
-        return name.upper()
+        base = domain.split(".")[0]
+        return base.replace("-", " ").upper()
     except:
         return "News"
 
 def create_tweet(article):
     title = article["title"].strip()
-    desc = article["description"].strip()
-    cont = article["content"].strip()
     url = article["url"].strip()
 
     source = extract_source(url)
+    headline = f"{title} - {source}."
 
-    # Headline must NEVER be cut
-    headline = f"{title} - {source}"
+    hashtags = generate_hashtags(title)
 
-    raw = f"{title}. {desc} {cont}".strip()
-    summary = summarize_text(raw, max_sentences=3)
+    tweet = (
+        f"{headline}\n\n"
+        f"Read full article - {url}\n\n"
+        f"{' '.join(hashtags)}"
+    )
 
-    hashtags = generate_hashtags(raw)
-
-    base = f"{headline}\n\n{summary}\n\nRead full article - {url}\n\n{' '.join(hashtags)}"
-
-    if len(base) <= 280:
-        tweet = base
-    else:
-        # Trim ONLY summary
-        reserve = len(f"{headline}\n\n\n\nRead full article - {url}\n\n{' '.join(hashtags)}")
+    # If still > 280, trim headline only at word boundary
+    if len(tweet) > 280:
+        reserve = len(f"\n\nRead full article - {url}\n\n{' '.join(hashtags)}")
         allowed = 280 - reserve - 3
+        short_title = title[:allowed]
+        if " " in short_title:
+            short_title = short_title.rsplit(" ", 1)[0]
+        headline = f"{short_title}... - {source}."
 
-        short_summary = summary[:allowed]
-        if " " in short_summary:
-            short_summary = short_summary.rsplit(" ", 1)[0]
-        short_summary += "..."
-
-        tweet = f"{headline}\n\n{short_summary}\n\nRead full article - {url}\n\n{' '.join(hashtags)}"
+        tweet = (
+            f"{headline}\n\n"
+            f"Read full article - {url}\n\n"
+            f"{' '.join(hashtags)}"
+        )
 
     print(f"📝 Generated tweet ({len(tweet)} chars):\n{'-'*50}\n{tweet}\n{'-'*50}")
     return tweet
