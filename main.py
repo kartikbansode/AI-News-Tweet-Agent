@@ -133,7 +133,7 @@ def generate_hashtags(text):
             tags.append(w)
 
     main = [f"#{w.capitalize()}" for w in tags[:3]]
-    return main + ["#theverixanews", "#news", "viral", "trending"]
+    return main + ["#theverixanews", "#news", "#viral", "#trending"]
 
 def create_tweet(article):
     title = article["title"].strip()
