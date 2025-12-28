@@ -20,80 +20,55 @@ twitter = TwitterClient(
     TWITTER_ACCESS_TOKEN_SECRET
 )
 
-POSTED_FILE = "posted_articles.json"
-LOG_FILE = "bot.log"
+LOG_FILE = "logs.json"
 
 COUNTRIES = ["us", "gb", "ca", "au", "in"]
 SOURCES = ["bbc-news", "al-jazeera-english", "reuters", "cnn"]
 
-# ---------------- Logging ---------------- #
+# ---------------- Logs & Stats ---------------- #
 
-def init_log():
+def init_logs():
     if not os.path.exists(LOG_FILE):
-        stats = {"total": 0, "success": 0, "failed": 0, "errors": 0}
         with open(LOG_FILE, "w", encoding="utf-8") as f:
-            f.write(json.dumps({"stats": stats}) + "\n")
+            f.write(json.dumps({"stats": {
+                "total": 0,
+                "success": 0,
+                "failed": 0
+            }}) + "\n")
 
-def read_stats():
-    try:
-        with open(LOG_FILE, "r", encoding="utf-8") as f:
-            return json.loads(f.readline()).get("stats", {})
-    except:
-        return {"total": 0, "success": 0, "failed": 0, "errors": 0}
+def read_stats_and_urls():
+    init_logs()
+    stats = {"total": 0, "success": 0, "failed": 0}
+    urls = set()
+
+    with open(LOG_FILE, "r", encoding="utf-8") as f:
+        for i, line in enumerate(f):
+            if not line.strip():
+                continue
+            obj = json.loads(line)
+            if i == 0 and "stats" in obj:
+                stats = obj["stats"]
+            elif "url" in obj:
+                urls.add(obj["url"])
+
+    return stats, urls
 
 def write_stats(stats):
     with open(LOG_FILE, "r", encoding="utf-8") as f:
         lines = f.readlines()
+
     lines[0] = json.dumps({"stats": stats}) + "\n"
+
     with open(LOG_FILE, "w", encoding="utf-8") as f:
         f.writelines(lines)
 
-def log_event(status, title, url, error=None):
-    init_log()
-    stats = read_stats()
-    stats["total"] += 1
-
-    if status == "success":
-        stats["success"] += 1
-    else:
-        stats["failed"] += 1
-        stats["errors"] += 1
-
-    write_stats(stats)
-
-    entry = {
-        "time": datetime.utcnow().isoformat() + "Z",
-        "status": status,
-        "title": title,
-        "url": url
-    }
-    if error:
-        entry["error"] = error
-
+def append_log(entry):
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry) + "\n")
 
-# ---------------- Posted URLs ---------------- #
-
-def load_posted_urls():
-    if not os.path.exists(POSTED_FILE):
-        return []
-    try:
-        with open(POSTED_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except:
-        return []
-
-def save_posted_url(url):
-    urls = load_posted_urls()
-    urls.append(url)
-    with open(POSTED_FILE, "w", encoding="utf-8") as f:
-        json.dump(urls[-200:], f, indent=2)
-
 # ---------------- News ---------------- #
 
-def fetch_news():
-    posted = set(load_posted_urls())
+def fetch_news(posted_urls):
     queries = [
         f"https://newsapi.org/v2/top-headlines?category=general&language=en&apiKey={NEWS_API_KEY}",
         *[f"https://newsapi.org/v2/top-headlines?country={c}&apiKey={NEWS_API_KEY}" for c in COUNTRIES],
@@ -106,7 +81,7 @@ def fetch_news():
             if r.status_code != 200:
                 continue
             articles = r.json().get("articles", [])
-            fresh = [a for a in articles if a.get("url") and a["url"] not in posted]
+            fresh = [a for a in articles if a.get("url") and a["url"] not in posted_urls]
             if fresh:
                 a = random.choice(fresh)
                 return {
@@ -118,14 +93,17 @@ def fetch_news():
         except:
             continue
 
-    raise Exception("No fresh articles found")
+    return None
 
-# ---------------- Text ---------------- #
+# ---------------- Tweet Formatting ---------------- #
 
-def summarize_text(text, max_sentences=4):
-    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
-    clean = [s.strip() for s in sentences if len(s.strip()) > 30]
-    return " ".join(clean[:max_sentences])
+def extract_source(url):
+    try:
+        domain = urllib.parse.urlparse(url).netloc.replace("www.", "")
+        base = domain.split(".")[0]
+        return base.replace("-", " ").upper()
+    except:
+        return "News"
 
 def generate_hashtags(text):
     words = re.findall(r'\b[a-zA-Z]{5,}\b', text.lower())
@@ -139,15 +117,7 @@ def generate_hashtags(text):
             tags.append(w)
 
     main = [f"#{w.capitalize()}" for w in tags[:3]]
-    return main + ["#theverixanews", "#news", "viral"]
-
-def extract_source(url):
-    try:
-        domain = urllib.parse.urlparse(url).netloc.replace("www.", "")
-        base = domain.split(".")[0]
-        return base.replace("-", " ").upper()
-    except:
-        return "News"
+    return main + ["#theverixanews", "#news", "viral", "trending"]
 
 def create_tweet(article):
     title = article["title"].strip()
@@ -155,7 +125,7 @@ def create_tweet(article):
 
     source = extract_source(url)
 
-    # ✅ If title already ends with a source, don't add again
+    # If title already contains a source, don't append again
     if re.search(r"\s-\s.+$", title):
         headline = title.rstrip(".") + "."
     else:
@@ -169,7 +139,6 @@ def create_tweet(article):
         f"{' '.join(hashtags)}"
     )
 
-    # Safety trim if over limit
     if len(tweet) > 280:
         reserve = len(f"\n\nRead full article - {url}\n\n{' '.join(hashtags)}")
         allowed = 280 - reserve - 3
@@ -177,6 +146,7 @@ def create_tweet(article):
         if " " in short_title:
             short_title = short_title.rsplit(" ", 1)[0]
         headline = f"{short_title}... - {source}."
+
         tweet = (
             f"{headline}\n\n"
             f"Read full article - {url}\n\n"
@@ -186,15 +156,19 @@ def create_tweet(article):
     print(f"📝 Generated tweet ({len(tweet)} chars):\n{'-'*50}\n{tweet}\n{'-'*50}")
     return tweet
 
-
 # ---------------- Main ---------------- #
 
 def main():
-    init_log()
     print("🤖 Starting AI News Agent...")
-    print("📰 Fetching news...")
 
-    article = fetch_news()
+    init_logs()
+    stats, posted_urls = read_stats_and_urls()
+
+    article = fetch_news(posted_urls)
+    if not article:
+        print("📰 No new articles found.")
+        return
+
     title = article["title"]
     url = article["url"]
 
@@ -202,19 +176,35 @@ def main():
         tweet = create_tweet(article)
         print("📤 Posting tweet...")
         twitter.post_tweet(tweet)
+
         print("✅ Tweet posted successfully!")
 
-        log_event("success", title, url)
-        save_posted_url(url)
+        stats["total"] += 1
+        stats["success"] += 1
+        write_stats(stats)
+
+        append_log({
+            "time": datetime.utcnow().isoformat() + "Z",
+            "status": "success",
+            "title": title,
+            "url": url
+        })
 
     except Exception as e:
         err = str(e)
         print(f"❌ Error posting tweet: {err}")
 
-        if "cloudflare" in err.lower() or "<html" in err.lower():
-            print("🛡 Cloudflare blocked this IP. Will retry next run.")
+        stats["total"] += 1
+        stats["failed"] += 1
+        write_stats(stats)
 
-        log_event("failed", title, url, error=err)
+        append_log({
+            "time": datetime.utcnow().isoformat() + "Z",
+            "status": "failed",
+            "title": title,
+            "url": url,
+            "error": err
+        })
 
 if __name__ == "__main__":
     main()
