@@ -156,6 +156,26 @@ def create_tweet(article):
     print(f"📝 Generated tweet ({len(tweet)} chars):\n{'-'*50}\n{tweet}\n{'-'*50}")
     return tweet
 
+
+def normalize_error(err: str) -> str:
+    e = err.lower()
+
+    if "cloudflare" in e or "<html" in e:
+        return "Cloudflare Blocked"
+    if "403" in e:
+        return "403 API Forbidden"
+    if "429" in e:
+        return "429 Rate Limited"
+    if "duplicate" in e:
+        return "Duplicate Tweet"
+    if "401" in e or "authentication" in e:
+        return "Auth Error"
+    if "timeout" in e:
+        return "Request Timeout"
+
+    return "Unknown Error"
+
+
 # ---------------- Main ---------------- #
 
 def main():
