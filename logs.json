@@ -1,2 +1,3 @@
-{"stats": {"total": 1, "success": 0, "failed": 1}}
+{"stats": {"total": 2, "success": 1, "failed": 1}}
 {"time": "2025-12-28T12:38:25.652285Z", "status": "failed", "title": "Thailand and Cambodia sign new ceasefire agreement to end border fighting - AP News", "url": "https://apnews.com/article/thailand-cambodia-border-fighting-ceasefire-0019310e1c062cd211f9f5398b3bc463", "error": "Cloudflare Blocked"}
+{"time": "2025-12-28T16:23:24.447976Z", "status": "success", "title": "With airstrike in Nigeria, Trump inserts U.S. into long-running turmoil - The Washington Post", "url": "https://www.washingtonpost.com/world/2025/12/26/trump-nigeria-airstrike-isis/"}
