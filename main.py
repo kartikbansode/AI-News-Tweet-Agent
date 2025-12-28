@@ -89,14 +89,55 @@ def summarize_text(text, max_sentences=5):
 
 def generate_hashtags(text):
     words = re.findall(r'\b[a-zA-Z]{5,}\b', text.lower())
-    uniq = list(dict.fromkeys(words))[:3]
-    return [f"#{w.capitalize()}" for w in uniq] + ["#theverixanews"]
+    stop_words = {
+        'about','after','before','their','there','which','would','could',
+        'should','while','where','when','these','those','other','under',
+        'major','state','states','people','news','today'
+    }
+
+    keywords = []
+    for w in words:
+        if w not in stop_words and w not in keywords:
+            keywords.append(w)
+
+    main_tags = [f"#{w.capitalize()}" for w in keywords[:3]]
+
+    return main_tags + ["#theverixanews", "#news"]
 
 def create_tweet(article):
-    raw = f"{article['title']}. {article['description']} {article['content']}".strip()
-    summary = summarize_text(raw, 5) or article["title"]
-    hashtags = generate_hashtags(raw)
-    tweet = f"{summary}\nRead full article - {article['url']}\n{' '.join(hashtags)}"
+    title = article.get("title", "").strip()
+    description = article.get("description", "").strip()
+    content = article.get("content", "").strip()
+    url = article.get("url", "").strip()
+
+    raw_text = f"{title}. {description} {content}".strip()
+
+    # Summarize to 3–4 sentences
+    summary = summarize_text(raw_text, max_sentences=4)
+    if not summary:
+        summary = title
+
+    # Generate hashtags
+    hashtags = generate_hashtags(raw_text)
+
+    # Build tweet with spacing
+    tweet = (
+        f"{summary}\n\n"
+        f"Read full article - {url}\n\n"
+        f"{' '.join(hashtags)}"
+    )
+
+    # Ensure within 280 chars
+    if len(tweet) > 280:
+        reserve = len(f"\n\nRead full article - {url}\n\n{' '.join(hashtags)}")
+        allowed = 280 - reserve - 3
+        short_summary = summary[:allowed].rsplit(" ", 1)[0] + "..."
+        tweet = (
+            f"{short_summary}\n\n"
+            f"Read full article - {url}\n\n"
+            f"{' '.join(hashtags)}"
+        )
+
     print(f"📝 Generated tweet ({len(tweet)} chars):\n{'-'*50}\n{tweet}\n{'-'*50}")
     return tweet
 
