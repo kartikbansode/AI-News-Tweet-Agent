@@ -1,20 +1,32 @@
 # AI News Tweet Agent  
 
->**Version:** 1.0.0
+>**Version:** 1.1.0
 >
->**Release Date:** August 20, 2025  
+>**Release Date:** December 28, 2025  
 
-An **AI-powered social media bot** that fetches the latest global news, summarizes it into short, professional updates, and posts automatically on **Twitter (X)**. 
+An **AI-powered social media bot** that fetches the latest global news, professional updates, and posts automatically on **Twitter (X)**. 
+
+
+---
+## What’s New in v1.1.0
+
+1. Bug fix - Posts full headlines with source name once.
+2. Clean tweet format with spaced sections.
+3. Custom hashtag support (including #theverixanews, #news, #viral, #trending).
+4. Unified [logs.json] file for: Overall stats (total, success, failed) and Line-by-line tweet history with timestamps.
+5. Smarter error logging — stores causes like 403 API error or Cloudflare blocked.
+6. Better duplicate prevention using logged URLs.
+7. Stable scheduled runs (manual or every 4 hours).
 
 ---
 
 ##  Features  
 -  Fetches **real-time news** from [NewsAPI](https://newsapi.org/)  
--  Summarizes articles into **5–6 lines** for readability  
+-  Summarizes headline for readability  
 -  Adds the **original article link** for full context  
 -  Auto-generates relevant hashtags
 -  Posts directly to **Twitter (X)**  
--  Runs every **4–5 hours** automatically via GitHub Actions  
+-  Runs every **4-5 hours** automatically via GitHub Actions  
 
 ---
 
@@ -22,11 +34,12 @@ An **AI-powered social media bot** that fetches the latest global news, summariz
 ```
 
 ai-social-agent/
-│── main.py              # Core bot logic (fetch, summarize, post)
-│── twitter\_api.py       # Twitter API client
-│── posted\_articles.json # Stores posted news URLs (avoid duplicates)
-│── requirements.txt     # Dependencies
-│── .github/workflows/   # GitHub Actions automation
+│── .github/workflows/   # GitHub Actions automation (scheduled & manual runs)
+│── logs.json            # Unified logs: stats + tweet history with timestamps
+│── main.py              # Core bot logic (fetch news, format tweets, post, log stats)
+│── requirements.txt     # Python dependencies
+│── twitter_api.py       # Twitter/X API client
+
 
 ````
 
