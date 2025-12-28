@@ -141,27 +141,45 @@ def generate_hashtags(text):
     main = [f"#{w.capitalize()}" for w in tags[:3]]
     return main + ["#theverixanews", "#news"]
 
+def extract_source(url):
+    try:
+        domain = urllib.parse.urlparse(url).netloc.replace("www.", "")
+        name = domain.split(".")[0]
+        return name.upper()
+    except:
+        return "News"
+
 def create_tweet(article):
-    title = article["title"]
-    desc = article["description"]
-    cont = article["content"]
-    url = article["url"]
+    title = article["title"].strip()
+    desc = article["description"].strip()
+    cont = article["content"].strip()
+    url = article["url"].strip()
+
+    source = extract_source(url)
+
+    # Headline must NEVER be cut
+    headline = f"{title} - {source}"
 
     raw = f"{title}. {desc} {cont}".strip()
-    summary = summarize_text(raw, 4)
-
-    if not summary.lower().startswith(title.lower()):
-        summary = f"{title}. {summary}"
+    summary = summarize_text(raw, max_sentences=3)
 
     hashtags = generate_hashtags(raw)
 
-    tweet = f"{summary}\n\nRead full article - {url}\n\n{' '.join(hashtags)}"
+    base = f"{headline}\n\n{summary}\n\nRead full article - {url}\n\n{' '.join(hashtags)}"
 
-    if len(tweet) > 280:
-        reserve = len(f"\n\nRead full article - {url}\n\n{' '.join(hashtags)}")
+    if len(base) <= 280:
+        tweet = base
+    else:
+        # Trim ONLY summary
+        reserve = len(f"{headline}\n\n\n\nRead full article - {url}\n\n{' '.join(hashtags)}")
         allowed = 280 - reserve - 3
-        short = summary[:allowed].rsplit(" ", 1)[0] + "..."
-        tweet = f"{short}\n\nRead full article - {url}\n\n{' '.join(hashtags)}"
+
+        short_summary = summary[:allowed]
+        if " " in short_summary:
+            short_summary = short_summary.rsplit(" ", 1)[0]
+        short_summary += "..."
+
+        tweet = f"{headline}\n\n{short_summary}\n\nRead full article - {url}\n\n{' '.join(hashtags)}"
 
     print(f"📝 Generated tweet ({len(tweet)} chars):\n{'-'*50}\n{tweet}\n{'-'*50}")
     return tweet
