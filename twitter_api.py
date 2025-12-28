@@ -1,5 +1,5 @@
-import os
 from requests_oauthlib import OAuth1Session
+import json
 
 class TwitterClient:
     def __init__(self, api_key, api_secret, access_token, access_token_secret):
@@ -9,11 +9,36 @@ class TwitterClient:
             resource_owner_key=access_token,
             resource_owner_secret=access_token_secret
         )
+        self.url = "https://api.twitter.com/2/tweets"
 
     def post_tweet(self, text):
-        """Post a tweet to Twitter/X."""
         payload = {"text": text}
-        response = self.oauth.post("https://api.twitter.com/2/tweets", json=payload)
-        if response.status_code != 201:
-            raise Exception(f"Twitter API error: {response.status_code} {response.text}")
-        return response.json()
+        response = self.oauth.post(self.url, json=payload, timeout=15)
+
+        status = response.status_code
+        body = response.text or ""
+
+        # ✅ Success
+        if status == 201:
+            try:
+                return response.json()
+            except Exception:
+                return {"status": "ok"}
+
+        lower = body.lower()
+
+        # 🛡 Cloudflare / HTML block
+        if "<html" in lower:
+            raise Exception("CLOUDFLARE_BLOCK")
+
+        # ⏱ Rate limit
+        if status == 429:
+            raise Exception("RATE_LIMIT")
+
+        # Other API errors
+        try:
+            err = response.json()
+        except json.JSONDecodeError:
+            err = body[:200]
+
+        raise Exception(f"TWITTER_ERROR_{status}: {err}")
