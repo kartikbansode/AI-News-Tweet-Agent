@@ -154,7 +154,12 @@ def create_tweet(article):
     url = article["url"].strip()
 
     source = extract_source(url)
-    headline = f"{title} - {source}."
+
+    # ✅ If title already ends with a source, don't add again
+    if re.search(r"\s-\s.+$", title):
+        headline = title.rstrip(".") + "."
+    else:
+        headline = f"{title} - {source}."
 
     hashtags = generate_hashtags(title)
 
@@ -164,7 +169,7 @@ def create_tweet(article):
         f"{' '.join(hashtags)}"
     )
 
-    # If still > 280, trim headline only at word boundary
+    # Safety trim if over limit
     if len(tweet) > 280:
         reserve = len(f"\n\nRead full article - {url}\n\n{' '.join(hashtags)}")
         allowed = 280 - reserve - 3
@@ -172,7 +177,6 @@ def create_tweet(article):
         if " " in short_title:
             short_title = short_title.rsplit(" ", 1)[0]
         headline = f"{short_title}... - {source}."
-
         tweet = (
             f"{headline}\n\n"
             f"Read full article - {url}\n\n"
@@ -181,6 +185,7 @@ def create_tweet(article):
 
     print(f"📝 Generated tweet ({len(tweet)} chars):\n{'-'*50}\n{tweet}\n{'-'*50}")
     return tweet
+
 
 # ---------------- Main ---------------- #
 
