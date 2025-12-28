@@ -211,20 +211,23 @@ def main():
         })
 
     except Exception as e:
-        err = str(e)
-        print(f"❌ Error posting tweet: {err}")
+    raw_err = str(e)
+    clean_err = normalize_error(raw_err)
 
-        stats["total"] += 1
-        stats["failed"] += 1
-        write_stats(stats)
+    print(f"❌ Error posting tweet: {clean_err}")
 
-        append_log({
-            "time": datetime.utcnow().isoformat() + "Z",
-            "status": "failed",
-            "title": title,
-            "url": url,
-            "error": err
-        })
+    stats["total"] += 1
+    stats["failed"] += 1
+    write_stats(stats)
+
+    append_log({
+        "time": datetime.utcnow().isoformat() + "Z",
+        "status": "failed",
+        "title": title,
+        "url": url,
+        "error": clean_err
+    })
+
 
 if __name__ == "__main__":
     main()
