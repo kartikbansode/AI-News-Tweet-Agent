@@ -1,4 +1,4 @@
-{"stats": {"total": 9, "success": 6, "failed": 3}}
+{"stats": {"total": 10, "success": 6, "failed": 4}}
 {"time": "2025-12-28T12:38:25.652285Z", "status": "failed", "title": "Thailand and Cambodia sign new ceasefire agreement to end border fighting - AP News", "url": "https://apnews.com/article/thailand-cambodia-border-fighting-ceasefire-0019310e1c062cd211f9f5398b3bc463", "error": "Cloudflare Blocked"}
 {"time": "2025-12-28T16:23:24.447976Z", "status": "success", "title": "With airstrike in Nigeria, Trump inserts U.S. into long-running turmoil - The Washington Post", "url": "https://www.washingtonpost.com/world/2025/12/26/trump-nigeria-airstrike-isis/"}
 {"time": "2025-12-28T20:21:38.932704Z", "status": "success", "title": "Inoue, Nakatani win to set up 2026 megafight - ESPN", "url": "https://www.espn.com/boxing/story/_/id/47426170/naoya-inoue-junto-nakatani-win-set-2026-megafight"}
@@ -8,3 +8,4 @@
 {"time": "2025-12-29T12:42:24.816215Z", "status": "success", "title": "Stunning James Webb Space Telescope Images of 2025 - ABC News", "url": "https://abcnews.go.com/International/photos/stunning-james-webb-space-telescope-images-2025-128724956"}
 {"time": "2025-12-29T16:25:06.531610Z", "status": "success", "title": "Restaurants' hottest menu item in 2025 was 'value.' That won't change next year - CNBC", "url": "https://www.cnbc.com/2025/12/28/value-meals-restaurants-mcdonalds-chilis-taco-bell.html"}
 {"time": "2025-12-29T17:01:30.313424Z", "status": "success", "title": "This is your teen\u2019s brain on phones and social media, according to science - The Washington Post", "url": "https://www.washingtonpost.com/health/2025/12/28/adolescent-brain-development-screen-time/"}
+{"time": "2025-12-29T20:23:10.391329Z", "status": "failed", "title": "Thai and Cambodian top diplomats meet in China to solidify ceasefire - ABC News", "url": "https://abcnews.go.com/International/wireStory/thai-cambodian-top-diplomats-meet-china-solidify-ceasefire-128730021", "error": "Cloudflare Blocked"}
