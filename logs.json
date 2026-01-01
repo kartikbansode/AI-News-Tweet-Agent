@@ -1,4 +1,4 @@
-{"stats": {"total": 26, "success": 13, "failed": 13}}
+{"stats": {"total": 27, "success": 13, "failed": 14}}
 {"time": "2025-12-28T12:38:25.652285Z", "status": "failed", "title": "Thailand and Cambodia sign new ceasefire agreement to end border fighting - AP News", "url": "https://apnews.com/article/thailand-cambodia-border-fighting-ceasefire-0019310e1c062cd211f9f5398b3bc463", "error": "Cloudflare Blocked"}
 {"time": "2025-12-28T16:23:24.447976Z", "status": "success", "title": "With airstrike in Nigeria, Trump inserts U.S. into long-running turmoil - The Washington Post", "url": "https://www.washingtonpost.com/world/2025/12/26/trump-nigeria-airstrike-isis/"}
 {"time": "2025-12-28T20:21:38.932704Z", "status": "success", "title": "Inoue, Nakatani win to set up 2026 megafight - ESPN", "url": "https://www.espn.com/boxing/story/_/id/47426170/naoya-inoue-junto-nakatani-win-set-2026-megafight"}
@@ -25,3 +25,4 @@
 {"time": "2026-01-01T04:47:05.993504Z", "status": "failed", "title": "Former U.S. Sen. Ben Nighthorse Campbell dies - The Colorado Sun", "url": "http://coloradosun.com/2025/12/30/ben-nighthorse-campbell-dies/", "error": "Cloudflare Blocked"}
 {"time": "2026-01-01T08:28:14.864452Z", "status": "failed", "title": "Kennedy Center exodus: The 11 acts, creators pulling out amid Trump takeover - Axios", "url": "https://www.axios.com/2025/12/30/new-years-2026-trump-kennedy-center", "error": "Cloudflare Blocked"}
 {"time": "2026-01-01T12:40:33.680731Z", "status": "failed", "title": "Disney to pay $10m over alleged children's privacy law violations - BBC", "url": "https://www.bbc.com/news/articles/crrnl94lq5vo", "error": "Cloudflare Blocked"}
+{"time": "2026-01-01T16:25:41.689209Z", "status": "failed", "title": "Trump vetoes two bipartisan bills, marking first vetoes of second term - CNN", "url": "https://www.cnn.com/2025/12/31/politics/trump-bipartisan-bills-vetoes", "error": "Cloudflare Blocked"}
