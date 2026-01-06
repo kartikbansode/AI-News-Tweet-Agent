@@ -1,4 +1,4 @@
-{"stats": {"total": 57, "success": 31, "failed": 26}}
+{"stats": {"total": 58, "success": 31, "failed": 27}}
 {"time": "2025-12-28T12:38:25.652285Z", "status": "failed", "title": "Thailand and Cambodia sign new ceasefire agreement to end border fighting - AP News", "url": "https://apnews.com/article/thailand-cambodia-border-fighting-ceasefire-0019310e1c062cd211f9f5398b3bc463", "error": "Cloudflare Blocked"}
 {"time": "2025-12-28T16:23:24.447976Z", "status": "success", "title": "With airstrike in Nigeria, Trump inserts U.S. into long-running turmoil - The Washington Post", "url": "https://www.washingtonpost.com/world/2025/12/26/trump-nigeria-airstrike-isis/"}
 {"time": "2025-12-28T20:21:38.932704Z", "status": "success", "title": "Inoue, Nakatani win to set up 2026 megafight - ESPN", "url": "https://www.espn.com/boxing/story/_/id/47426170/naoya-inoue-junto-nakatani-win-set-2026-megafight"}
@@ -56,3 +56,4 @@
 {"time": "2026-01-06T08:29:47.602696Z", "status": "success", "title": "Suns 108-105 Thunder (Jan 4, 2026) Game Recap - ESPN", "url": "https://www.espn.com/nba/recap?gameId\\\\u003d401810354"}
 {"time": "2026-01-06T12:42:23.062507Z", "status": "success", "title": "Who controls Venezuela's oil now? What Maduro's arrest means for energy markets - CNBC", "url": "https://www.cnbc.com/2026/01/05/venezuela-oil-sour-crude-control-chevron-post-maduro-arrest.html"}
 {"time": "2026-01-06T16:27:54.952000Z", "status": "failed", "title": "Pentagon to cut Sen. Mark Kelly's military retirement pay over 'seditious' video: Hegseth - CNBC", "url": "https://www.cnbc.com/2026/01/05/pentagon-mark-kelly-video-hegseth.html", "error": "Cloudflare Blocked"}
+{"time": "2026-01-06T20:22:51.312215Z", "status": "failed", "title": "Gemini expands on Google TV, bringing Nano Banana and Veo models to your TV - Ars Technica", "url": "https://arstechnica.com/google/2026/01/gemini-expands-on-google-tv-bringing-nano-banana-and-veo-models-to-your-tv/", "error": "Cloudflare Blocked"}
