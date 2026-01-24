@@ -1,4 +1,4 @@
-{"stats": {"total": 165, "success": 135, "failed": 30}}
+{"stats": {"total": 166, "success": 135, "failed": 31}}
 {"time": "2025-12-28T12:38:25.652285Z", "status": "failed", "title": "Thailand and Cambodia sign new ceasefire agreement to end border fighting - AP News", "url": "https://apnews.com/article/thailand-cambodia-border-fighting-ceasefire-0019310e1c062cd211f9f5398b3bc463", "error": "Cloudflare Blocked"}
 {"time": "2025-12-28T16:23:24.447976Z", "status": "success", "title": "With airstrike in Nigeria, Trump inserts U.S. into long-running turmoil - The Washington Post", "url": "https://www.washingtonpost.com/world/2025/12/26/trump-nigeria-airstrike-isis/"}
 {"time": "2025-12-28T20:21:38.932704Z", "status": "success", "title": "Inoue, Nakatani win to set up 2026 megafight - ESPN", "url": "https://www.espn.com/boxing/story/_/id/47426170/naoya-inoue-junto-nakatani-win-set-2026-megafight"}
@@ -164,3 +164,4 @@
 {"time": "2026-01-24T08:25:53.941605Z", "status": "success", "title": "Weather update: Friday classes canceled - news.wisc.edu", "url": "https://news.wisc.edu/weather-update-friday-classes-canceled/"}
 {"time": "2026-01-24T12:38:52.800970Z", "status": "success", "title": "Pool Report from Tonight\u2019s Houston Rockets at Philadelphia 76ers Game - official NBA", "url": "https://official.nba.com/pool-report-from-tonights-houston-rockets-at-philadelphia-76ers-game/"}
 {"time": "2026-01-24T16:23:30.991079Z", "status": "success", "title": "Trump says Greenland framework includes mineral rights. What minerals does the island have? - BBC", "url": "https://www.bbc.com/news/articles/cly9230yw15o"}
+{"time": "2026-01-24T20:20:35.434884Z", "status": "failed", "title": "The Trump administration admits even more ways DOGE accessed sensitive personal data - NPR", "url": "https://www.npr.org/2026/01/23/nx-s1-5684185/doge-data-social-security-privacy", "error": "Cloudflare Blocked"}
