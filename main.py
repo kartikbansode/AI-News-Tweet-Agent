@@ -82,7 +82,7 @@ def normalize_error(err: str) -> str:
     if "timeout" in e:
         return "Request Timeout"
 
-    return "Unknown Error"
+    return err[:120]
 
 # ---------------- News ---------------- #
 
