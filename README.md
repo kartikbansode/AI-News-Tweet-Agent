@@ -14,7 +14,7 @@ An **AI-powered social media bot** that fetches the latest global news, professi
 2. Clean tweet format with spaced sections.
 3. Custom hashtag support (including #theverixanews, #news, #viral, #trending).
 4. Unified [logs.json] file for: Overall stats (total, success, failed) and Line-by-line tweet history with timestamps.
-5. Smarter error logging — stores causes like 403 API error or Cloudflare blocked.
+5. Smarter error logging - stores causes like 403 API error or Cloudflare blocked.
 6. Better duplicate prevention using logged URLs.
 7. Stable scheduled runs (manual or every 4 hours).
 
@@ -26,7 +26,8 @@ An **AI-powered social media bot** that fetches the latest global news, professi
 -  Adds the **original article link** for full context  
 -  Auto-generates relevant hashtags
 -  Posts directly to **Twitter (X)**  
--  Runs every **4-5 hours** automatically via GitHub Actions  
+-  Runs manually, or every **4-5 hours** after enabling the GitHub Actions cron
+-  Supports an optional [source context review](docs/source-context-review.md) before posting sensitive or fast-moving stories
 
 ---
 
@@ -84,7 +85,9 @@ python main.py
 ### Run on GitHub Actions
 
 * The bot is pre-configured with a workflow file.
-* It will automatically post news every few hours.
+* It will post manually by default.
+* Uncomment the cron schedule in `.github/workflows/post-news.yml` to post every few hours.
+* Review [source context](docs/source-context-review.md) before enabling scheduled posts for sensitive topics.
 
 * Check Workflow actions here [[AI News Tweet Agent Workflow]](https://github.com/kartikbansode/AI-News-Tweet-Agent/actions)  
 
@@ -100,6 +103,5 @@ MIT License © 2025 [Kartik Bansode](https://github.com/kartikbansode)
 ## Contact
 - Email: bansodekartik00@gmail.com
 - Github: https://github.com/kartikbansode
-
 
 
